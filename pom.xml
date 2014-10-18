@@ -2,8 +2,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.bitcoinj</groupId>
-  <artifactId>bitcoinj-parent</artifactId>
+  <groupId>com.dogecoin</groupId>
+  <artifactId>dogecoinj-parent</artifactId>
   <version>0.13-SNAPSHOT</version>
   <packaging>pom</packaging>
 
@@ -20,14 +20,14 @@
   </parent>
 
   <scm>
-    <connection>scm:git:https://github.com/bitcoinj/bitcoinj</connection>
-    <developerConnection>scm:git:https://github.com/bitcoinj/bitcoinj</developerConnection>
-    <url>scm:git:https://github.com/bitcoinj/bitcoinj</url>
+    <connection>scm:git:https://github.com/langerhans/dogecoinj-new</connection>
+    <developerConnection>scm:git:https://github.com/langerhans/dogecoinj-new</developerConnection>
+    <url>scm:git:https://github.com/langerhans/dogecoinj-new</url>
   </scm>
 
-  <name>bitcoinj Parent</name>
-  <description>Provides the common configuration for the BitCoinJ modules</description>
-  <url>http://www.bitcoinj.org/</url>
+  <name>dogecoinj Parent</name>
+  <description>Provides the common configuration for the DogecoinJ modules</description>
+  <url>https://github.com/langerhans/dogecoinj-new/</url>
 
   <licenses>
     <license>
@@ -39,10 +39,11 @@
   </licenses>
 
   <issueManagement>
-    <system>Google Code</system>
-    <url>http://code.google.com/p/bitcoinj/issues/list</url>
+    <system>GitHub</system>
+    <url>https://github.com/langerhans/dogecoinj-new/issues</url>
   </issueManagement>
 
+  <!--
   <mailingLists>
     <mailingList>
       <name>bitcoinj Google Group</name>
@@ -60,6 +61,7 @@
       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
   </distributionManagement>
+  -->
 
   <!-- Common build plugin configuration -->
   <build>
@@ -149,7 +151,7 @@
         <artifactId>slf4j-api</artifactId>
         <version>1.7.6</version>
       </dependency>
-      <!-- bitcoinj consumers are expected to provide their own SLF4J adapters
+      <!-- dogecoinj consumers are expected to provide their own SLF4J adapters
     such as logback, slf4j-log4j12, slf4j-jcl and so on
     see http://www.slf4j.org/faq.html -->
       <dependency>

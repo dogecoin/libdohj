@@ -20,19 +20,19 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.bitcoinj</groupId>
-        <artifactId>bitcoinj-parent</artifactId>
+        <groupId>com.dogecoin</groupId>
+        <artifactId>dogecoinj-parent</artifactId>
         <version>0.13-SNAPSHOT</version>
     </parent>
 
-    <artifactId>bitcoinj-core</artifactId>
+    <artifactId>dogecoinj-core</artifactId>
 
-    <name>bitcoinj</name>
-    <description>A Java Bitcoin library</description>
+    <name>dogecoinj</name>
+    <description>A Java Dogecoin library</description>
 
     <packaging>jar</packaging>
 
-    <url>https://bitcoinj.github.io</url>
+    <url>https://github.com/langerhans/dogecoinj-new</url>
 
     <licenses>
         <license>
@@ -45,8 +45,8 @@
     <!-- Dummy block to make Maven Central happy: authors list is in AUTHORS -->
     <developers>
         <developer>
-            <name>The bitcoinj team</name>
-            <email>bitcoinj@googlegroups.com</email>
+            <name>The bitcoinj team. Port to Dogecoin by the Dogecoin developers</name>
+            <email>info@dogecoin.com</email>
         </developer>
     </developers>
 
@@ -268,8 +268,8 @@
                             <artifactItems>
                                 <artifactItem>
                                     <outputDirectory>target/test-classes/</outputDirectory>
-                                    <groupId>org.bitcoinj</groupId>
-                                    <artifactId>bitcoinj-core</artifactId>
+                                    <groupId>com.dogecoin</groupId>
+                                    <artifactId>dogecoinj-core</artifactId>
                                     <version>${project.version}</version>
                                 </artifactItem>
                             </artifactItems>
@@ -302,7 +302,7 @@
                         <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>org.bitcoinj.core.BitcoindComparisonTool</mainClass>
+                                    <mainClass>com.dogecoin.dogecoinj.core.BitcoindComparisonTool</mainClass>
                                     <addClasspath>false</addClasspath>
                                 </manifest>
                             </archive>
@@ -393,7 +393,7 @@
         </dependency>
         -->
         <dependency>
-            <groupId>org.bitcoinj</groupId>
+            <groupId>com.dogecoin</groupId>
             <artifactId>orchid</artifactId>
             <version>1.0</version>
         </dependency>
