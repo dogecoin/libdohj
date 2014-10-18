@@ -21,6 +21,7 @@ import com.dogecoin.dogecoinj.params.*;
 import com.dogecoin.dogecoinj.script.Script;
 import com.dogecoin.dogecoinj.script.ScriptOpCodes;
 import com.google.common.base.Objects;
+import org.spongycastle.util.encoders.Hex;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -47,16 +48,16 @@ public abstract class NetworkParameters implements Serializable {
     /**
      * The alert signing key originally owned by Satoshi, and now passed on to Gavin along with a few others.
      */
-    public static final byte[] SATOSHI_KEY = Utils.HEX.decode("04fc9702847840aaf195de8442ebecedf5b095cdbb9bc716bda9110971b28a49e0ead8564ff0db22209e0374782c093bb899692d524e9d6a6956e7c5ecbcd68284");
+    public static final byte[] SATOSHI_KEY = Hex.decode("04d4da7a5dae4db797d9b0644d57a5cd50e05a70f36091cd62e2fc41c98ded06340be5a43a35e185690cd9cde5d72da8f6d065b499b06f51dcfba14aad859f443a");
 
     /** The string returned by getId() for the main, production network where people trade things. */
-    public static final String ID_MAINNET = "org.bitcoin.production";
+    public static final String ID_MAINNET = "org.dogecoin.production";
     /** The string returned by getId() for the testnet. */
-    public static final String ID_TESTNET = "org.bitcoin.test";
+    public static final String ID_TESTNET = "org.dogecoin.test";
     /** The string returned by getId() for regtest mode. */
-    public static final String ID_REGTEST = "org.bitcoin.regtest";
+    public static final String ID_REGTEST = "org.dogecoin.regtest";
     /** Unit test network. */
-    public static final String ID_UNITTESTNET = "org.bitcoinj.unittest";
+    public static final String ID_UNITTESTNET = "org.dogecoinj.unittest";
 
     /** The string used by the payment protocol to represent the main net. */
     public static final String PAYMENT_PROTOCOL_ID_MAINNET = "main";
@@ -73,7 +74,10 @@ public abstract class NetworkParameters implements Serializable {
     protected int p2shHeader;
     protected int dumpedPrivateKeyHeader;
     protected int interval;
+    protected int newInterval;
     protected int targetTimespan;
+    protected int newTargetTimespan;
+    protected int diffChangeTarget;
     protected byte[] alertSigningKey;
 
     /**
@@ -105,13 +109,13 @@ public abstract class NetworkParameters implements Serializable {
             //
             //   "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
             byte[] bytes = Utils.HEX.decode
-                    ("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73");
+                    ("04ffff001d0104084e696e746f6e646f");
             t.addInput(new TransactionInput(n, t, bytes));
             ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
             Script.writeBytes(scriptPubKeyBytes, Utils.HEX.decode
-                    ("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"));
+                    ("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9"));
             scriptPubKeyBytes.write(ScriptOpCodes.OP_CHECKSIG);
-            t.addOutput(new TransactionOutput(n, t, FIFTY_COINS, scriptPubKeyBytes.toByteArray()));
+            t.addOutput(new TransactionOutput(n, t, COIN.multiply(88), scriptPubKeyBytes.toByteArray()));
         } catch (Exception e) {
             // Cannot happen.
             throw new RuntimeException(e);
@@ -120,9 +124,11 @@ public abstract class NetworkParameters implements Serializable {
         return genesisBlock;
     }
 
-    public static final int TARGET_TIMESPAN = 14 * 24 * 60 * 60;  // 2 weeks per difficulty cycle, on average.
-    public static final int TARGET_SPACING = 10 * 60;  // 10 minutes per block.
+    public static final int TARGET_TIMESPAN = 4 * 60 * 60;  // 2 weeks per difficulty cycle, on average.
+    public static final int TARGET_TIMESPAN_NEW = 60;  // 60s per difficulty cycle, on average. Kicks in after block 145k.
+    public static final int TARGET_SPACING = 1 * 60;  // 10 minutes per block.
     public static final int INTERVAL = TARGET_TIMESPAN / TARGET_SPACING;
+    public static final int INTERVAL_NEW = TARGET_TIMESPAN_NEW / TARGET_SPACING;
     
     /**
      * Blocks with a timestamp after this should enforce BIP 16, aka "Pay to script hash". This BIP changed the
@@ -133,8 +139,10 @@ public abstract class NetworkParameters implements Serializable {
     
     /**
      * The maximum number of coins to be generated
+     * This is 92bn! We don't expect single transactions or blocks with that value.
+     * Therefore we can assume this will suffice.
      */
-    public static final long MAX_COINS = 21000000;
+    public static final long MAX_COINS = Long.MAX_VALUE / Coin.SMALLEST_UNIT_EXPONENT;
 
     /**
      * The maximum money to be generated
@@ -304,11 +312,20 @@ public abstract class NetworkParameters implements Serializable {
 
     /**
      * How much time in seconds is supposed to pass between "interval" blocks. If the actual elapsed time is
-     * significantly different from this value, the network difficulty formula will produce a different value. Both
-     * test and production Bitcoin networks use 2 weeks (1209600 seconds).
+     * significantly different from this value, the network difficulty formula will produce a different value.
+     * Dogecoin before block 145k used 4 hours.
      */
     public int getTargetTimespan() {
         return targetTimespan;
+    }
+
+    /**
+     * How much time in seconds is supposed to pass between "interval" blocks. If the actual elapsed time is
+     * significantly different from this value, the network difficulty formula will produce a different value.
+     * Dogecoin after block 145k uses 60 seconds.
+     */
+    public int getNewTargetTimespan() {
+        return newTargetTimespan;
     }
 
     /**
@@ -330,6 +347,16 @@ public abstract class NetworkParameters implements Serializable {
     /** How many blocks pass between difficulty adjustment periods. Bitcoin standardises this to be 2015. */
     public int getInterval() {
         return interval;
+    }
+
+    /** How many blocks pass between difficulty adjustment periods. After new diff algo. */
+    public int getNewInterval() {
+        return newInterval;
+    }
+
+    /** Target for switch to new diff algo */
+    public int getDiffChangeTarget() {
+        return diffChangeTarget;
     }
 
     /** Maximum target represents the easiest allowable proof of work. */
