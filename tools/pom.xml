@@ -54,7 +54,7 @@
                   </filters>
                   <transformers>
                       <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                          <mainClass>org.bitcoinj.tools.WalletTool</mainClass>
+                          <mainClass>com.dogecoin.dogecoinj.tools.WalletTool</mainClass>
                       </transformer>
                   </transformers>
                   <outputFile>target/wallet-tool.jar</outputFile>
