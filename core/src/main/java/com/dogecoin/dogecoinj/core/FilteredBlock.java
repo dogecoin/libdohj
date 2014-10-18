@@ -26,7 +26,7 @@ import java.util.*;
  */
 public class FilteredBlock extends Message {
     /** The protocol version at which Bloom filtering started to be supported. */
-    public static final int MIN_PROTOCOL_VERSION = 70000;
+    public static final int MIN_PROTOCOL_VERSION = 70001;
     private Block header;
 
     private PartialMerkleTree merkleTree;
@@ -57,12 +57,28 @@ public class FilteredBlock extends Message {
 
     @Override
     void parse() throws ProtocolException {
+        long blockVersion = Utils.readUint32(payload, cursor);
+
         byte[] headerBytes = new byte[Block.HEADER_SIZE];
         System.arraycopy(payload, 0, headerBytes, 0, Block.HEADER_SIZE);
-        header = new Block(params, headerBytes);
-        
-        merkleTree = new PartialMerkleTree(params, payload, Block.HEADER_SIZE);
-        
+
+
+        if (blockVersion == Block.BLOCK_VERSION_AUXPOW_AUXBLOCK) {
+            AuxPoWMessage auxPoWMessage = new AuxPoWMessage(payload, cursor + Block.HEADER_SIZE);
+            auxPoWMessage.parse();
+            this.cursor = auxPoWMessage.cursor;
+
+            header = new Block(params, headerBytes, new Block(params, auxPoWMessage.constructParentHeader()));
+
+            byte[] filteredBlock = new byte[Block.HEADER_SIZE + payload.length - cursor];
+            System.arraycopy(headerBytes, 0, filteredBlock, 0, headerBytes.length-1);
+            System.arraycopy(payload, cursor, filteredBlock, Block.HEADER_SIZE, payload.length-cursor);
+            merkleTree = new PartialMerkleTree(params, filteredBlock, Block.HEADER_SIZE);
+        } else {
+            header = new Block(params, headerBytes);
+            merkleTree = new PartialMerkleTree(params, payload, Block.HEADER_SIZE);
+        }
+
         length = Block.HEADER_SIZE + merkleTree.getMessageSize();
     }
     

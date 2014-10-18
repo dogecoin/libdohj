@@ -834,6 +834,7 @@ public abstract class AbstractBlockChain {
 
     // February 16th 2012
     private static final Date testnetDiffDate = new Date(1329264000000L);
+    private static final int testNetRetargetFix = 157500;
 
     /**
      * Throws an exception if the blocks difficulty is not correct.
@@ -841,9 +842,25 @@ public abstract class AbstractBlockChain {
     private void checkDifficultyTransitions(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
         checkState(lock.isHeldByCurrentThread());
         Block prev = storedPrev.getHeader();
+
+        boolean newDiffAlgo = storedPrev.getHeight() + 1 >= params.getDiffChangeTarget();
+        int retargetInterval = params.getInterval();
+        int retargetTimespan = params.getTargetTimespan();
+        if (newDiffAlgo)
+        {
+            retargetInterval = params.getNewInterval();
+            retargetTimespan = params.getNewTargetTimespan();
+        }
+
+        if (params.getId().equals(NetworkParameters.ID_TESTNET)
+                && storedPrev.getHeight() >= testNetRetargetFix
+                && nextBlock.getTimeSeconds() > storedPrev.getHeader().getTimeSeconds() + retargetTimespan * 2 ) {
+            checkTestnetDifficulty(storedPrev, prev, nextBlock);
+            return;
+        }
         
         // Is this supposed to be a difficulty transition point?
-        if ((storedPrev.getHeight() + 1) % params.getInterval() != 0) {
+        if ((storedPrev.getHeight() + 1) % retargetInterval != 0) {
 
             // TODO: Refactor this hack after 0.5 is released and we stop supporting deserialization compatibility.
             // This should be a method of the NetworkParameters, which should in turn be using singletons and a subclass
@@ -865,7 +882,11 @@ public abstract class AbstractBlockChain {
         // two weeks after the initial block chain download.
         long now = System.currentTimeMillis();
         StoredBlock cursor = blockStore.get(prev.getHash());
-        for (int i = 0; i < params.getInterval() - 1; i++) {
+        int goBack = retargetInterval - 1;
+        if (cursor.getHeight()+1 != retargetInterval)
+            goBack = retargetInterval;
+
+        for (int i = 0; i < goBack; i++) {
             if (cursor == null) {
                 // This should never happen. If it does, it means we are following an incorrect or busted chain.
                 throw new VerificationException(
@@ -873,18 +894,50 @@ public abstract class AbstractBlockChain {
             }
             cursor = blockStore.get(cursor.getHeader().getPrevBlockHash());
         }
+
+        //We used checkpoints...
+        if(cursor == null)
+        {
+            log.debug("Difficulty transition: Hit checkpoint!");
+            return;
+        }
+
         long elapsed = System.currentTimeMillis() - now;
         if (elapsed > 50)
             log.info("Difficulty transition traversal took {}msec", elapsed);
 
         Block blockIntervalAgo = cursor.getHeader();
         int timespan = (int) (prev.getTimeSeconds() - blockIntervalAgo.getTimeSeconds());
+        final int targetTimespan = retargetTimespan;
+
+        if (newDiffAlgo)
+        {
+            timespan = retargetTimespan + (timespan - retargetTimespan)/8;
+            if (timespan < (retargetTimespan - (retargetTimespan/4)) ) timespan = (retargetTimespan - (retargetTimespan/4));
+            if (timespan > (retargetTimespan + (retargetTimespan/2)) ) timespan = (retargetTimespan + (retargetTimespan/2));
+        }
         // Limit the adjustment step.
-        final int targetTimespan = params.getTargetTimespan();
-        if (timespan < targetTimespan / 4)
-            timespan = targetTimespan / 4;
-        if (timespan > targetTimespan * 4)
-            timespan = targetTimespan * 4;
+        else if (storedPrev.getHeight()+1 > 10000)
+        {
+            if (timespan < targetTimespan / 4)
+                timespan = targetTimespan / 4;
+            if (timespan > targetTimespan * 4)
+                timespan = targetTimespan * 4;
+        }
+        else if (storedPrev.getHeight()+1 > 5000)
+        {
+            if (timespan < targetTimespan / 8)
+                timespan = targetTimespan / 8;
+            if (timespan > targetTimespan * 4)
+                timespan = targetTimespan * 4;
+        }
+        else
+        {
+            if (timespan < targetTimespan / 16)
+                timespan = targetTimespan / 16;
+            if (timespan > targetTimespan * 4)
+                timespan = targetTimespan * 4;
+        }
 
         BigInteger newTarget = Utils.decodeCompactBits(prev.getDifficultyTarget());
         newTarget = newTarget.multiply(BigInteger.valueOf(timespan));

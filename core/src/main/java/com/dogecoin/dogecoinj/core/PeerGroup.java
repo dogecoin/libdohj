@@ -17,6 +17,7 @@
 
 package com.dogecoin.dogecoinj.core;
 
+import com.dogecoin.dogecoinj.params.MainNetParams;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -113,7 +114,7 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     // until we reach this count.
     @GuardedBy("lock") private int maxConnections;
     // Minimum protocol version we will allow ourselves to connect to: require Bloom filtering.
-    private volatile int vMinRequiredProtocolVersion = FilteredBlock.MIN_PROTOCOL_VERSION;
+    private volatile int vMinRequiredProtocolVersion = MainNetParams.PROTOCOL_VERSION;
 
     // Runs a background thread that we use for scheduling pings to our peers, so we can measure their performance
     // and network latency. We ping peers every pingIntervalMsec milliseconds.

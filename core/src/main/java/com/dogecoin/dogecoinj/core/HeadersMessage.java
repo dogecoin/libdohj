@@ -76,17 +76,38 @@ public class HeadersMessage extends Message {
         long numHeaders = readVarInt();
         if (numHeaders > MAX_HEADERS)
             throw new ProtocolException("Too many headers: got " + numHeaders + " which is larger than " +
-                                         MAX_HEADERS);
+                    MAX_HEADERS);
 
         blockHeaders = new ArrayList<Block>();
 
         for (int i = 0; i < numHeaders; ++i) {
-            // Read 80 bytes of the header and one more byte for the transaction list, which is always a 00 because the
-            // transaction list is empty.
-            byte[] blockHeader = readBytes(81);
+            // Read the block version. If it's not an aux block all is fine, else throw out the aux stuff
+            long blockVersion = Utils.readUint32(payload, cursor);
+            byte[] blockHeader;
+            Block newBlockHeader;
+            if (blockVersion == Block.BLOCK_VERSION_AUXPOW_AUXBLOCK) {
+                blockHeader = readBytes(80);
+                byte[] tmp = new byte[81];
+                System.arraycopy(blockHeader, 0, tmp, 0, blockHeader.length);
+                tmp[80] = 0;
+                blockHeader = tmp;
+
+                AuxPoWMessage auxPoWMessage = new AuxPoWMessage(payload, cursor);
+                auxPoWMessage.parse();
+                this.cursor = auxPoWMessage.cursor;
+
+                if (readBytes(1)[0] != 0)
+                    throw new ProtocolException("Block header does not end with a null byte");
+
+                newBlockHeader = new Block(this.params, blockHeader, true, true, 81, new Block(params, auxPoWMessage.constructParentHeader()));
+            } else {
+                // Read 80 bytes of the header and one more byte for the transaction list, which is always a 00 because the
+                // transaction list is empty.
+                blockHeader = readBytes(81);
+                newBlockHeader = new Block(this.params, blockHeader, true, true, 81);
+            }
             if (blockHeader[80] != 0)
                 throw new ProtocolException("Block header does not end with a null byte");
-            Block newBlockHeader = new Block(this.params, blockHeader, true, true, 81);
             blockHeaders.add(newBlockHeader);
         }
 

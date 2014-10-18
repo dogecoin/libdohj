@@ -38,6 +38,7 @@ import java.util.List;
 import static com.dogecoin.dogecoinj.core.Coin.FIFTY_COINS;
 import static com.dogecoin.dogecoinj.core.Utils.doubleDigest;
 import static com.dogecoin.dogecoinj.core.Utils.doubleDigestTwoBuffers;
+import static com.dogecoin.dogecoinj.core.Utils.scryptDigest;
 
 /**
  * <p>A block is a group of transactions, and is one of the fundamental data structures of the Bitcoin system.
@@ -74,6 +75,10 @@ public class Block extends Message {
     /** A value for difficultyTarget (nBits) that allows half of all possible hash solutions. Used in unit testing. */
     public static final long EASIEST_DIFFICULTY_TARGET = 0x207fFFFFL;
 
+    public static final int BLOCK_VERSION_DEFAULT = 0x00000002;
+    public static final int BLOCK_VERSION_AUXPOW = 0x00620002;
+    public static final int BLOCK_VERSION_AUXPOW_AUXBLOCK = 0x00620102;
+
     // Fields defined as part of the protocol format.
     private long version;
     private Sha256Hash prevBlockHash;
@@ -82,11 +87,15 @@ public class Block extends Message {
     private long difficultyTarget; // "nBits"
     private long nonce;
 
+    // The parent block header for AuxPoW blocks
+    private Block parentBlock;
+
     /** If null, it means this object holds only the headers. */
     List<Transaction> transactions;
 
     /** Stores the hash of the block. If null, getHash() will recalculate it. */
     private transient Sha256Hash hash;
+    private transient Sha256Hash scryptHash;
 
     private transient boolean headerParsed;
     private transient boolean transactionsParsed;
@@ -116,6 +125,12 @@ public class Block extends Message {
         super(params, payloadBytes, 0, false, false, payloadBytes.length);
     }
 
+    /** Constructs a block object from the Bitcoin wire format. */
+    public Block(NetworkParameters params, byte[] payloadBytes, Block parentBlock) throws ProtocolException {
+        super(params, payloadBytes, 0, false, false, payloadBytes.length);
+        this.parentBlock = parentBlock;
+    }
+
     /**
      * Contruct a block object from the Bitcoin wire format.
      * @param params NetworkParameters object.
@@ -131,7 +146,11 @@ public class Block extends Message {
             throws ProtocolException {
         super(params, payloadBytes, 0, parseLazy, parseRetain, length);
     }
-
+    public Block(NetworkParameters params, byte[] payloadBytes, boolean parseLazy, boolean parseRetain, int length, Block parentBlock)
+            throws ProtocolException {
+        super(params, payloadBytes, 0, parseLazy, parseRetain, length);
+        this.parentBlock = parentBlock;
+    }
 
     /**
      * Construct a block initialized with all the given fields.
@@ -196,11 +215,20 @@ public class Block extends Message {
         headerBytesValid = parseRetain;
     }
 
+    private void parseAuxData() throws ProtocolException {
+        AuxPoWMessage auxPoWMessage = new AuxPoWMessage(payload, cursor);
+        auxPoWMessage.parse();
+        this.cursor = auxPoWMessage.cursor;
+        this.parentBlock = new Block(params, auxPoWMessage.constructParentHeader());
+    }
+
     private void parseTransactions() throws ProtocolException {
         if (transactionsParsed)
             return;
 
-        cursor = offset + HEADER_SIZE;
+        if (version != BLOCK_VERSION_AUXPOW_AUXBLOCK) {
+            cursor = offset + HEADER_SIZE;
+        }
         optimalEncodingMessageSize = HEADER_SIZE;
         if (payload.length == cursor) {
             // This message is just a header, it has no transactions.
@@ -229,6 +257,9 @@ public class Block extends Message {
     @Override
     void parse() throws ProtocolException {
         parseHeader();
+        if (version == BLOCK_VERSION_AUXPOW_AUXBLOCK && payload.length >= 160) { // We have at least 2 headers in an Aux block. Workaround for StoredBlocks
+            parseAuxData();
+        }
         parseTransactions();
         length = cursor - offset;
     }
@@ -516,6 +547,16 @@ public class Block extends Message {
         }
     }
 
+    private Sha256Hash calculateScryptHash() {
+        try {
+            ByteArrayOutputStream bos = new UnsafeByteArrayOutputStream(HEADER_SIZE);
+            writeHeader(bos);
+            return new Sha256Hash(Utils.reverseBytes(scryptDigest(bos.toByteArray())));
+        } catch (IOException e) {
+            throw new RuntimeException(e); // Cannot happen.
+        }
+    }
+
     /**
      * Returns the hash of the block (which for a valid, solved block should be below the target) in the form seen on
      * the block explorer. If you call this on block 1 in the production chain
@@ -523,6 +564,10 @@ public class Block extends Message {
      */
     public String getHashAsString() {
         return getHash().toString();
+    }
+
+    public String getScryptHashAsString() {
+        return getScryptHash().toString();
     }
 
     /**
@@ -534,6 +579,12 @@ public class Block extends Message {
         if (hash == null)
             hash = calculateHash();
         return hash;
+    }
+
+    public Sha256Hash getScryptHash() {
+        if (scryptHash == null)
+            scryptHash = calculateScryptHash();
+        return scryptHash;
     }
 
     /**
@@ -567,6 +618,9 @@ public class Block extends Message {
         block.difficultyTarget = difficultyTarget;
         block.transactions = null;
         block.hash = getHash().duplicate();
+        if (version == BLOCK_VERSION_AUXPOW_AUXBLOCK) {
+            block.parentBlock = parentBlock;
+        }
         return block;
     }
 
@@ -652,7 +706,12 @@ public class Block extends Message {
         // field is of the right value. This requires us to have the preceeding blocks.
         BigInteger target = getDifficultyTargetAsInteger();
 
-        BigInteger h = getHash().toBigInteger();
+        BigInteger h;
+        if (this.version == BLOCK_VERSION_AUXPOW_AUXBLOCK) {
+            h = this.parentBlock.getScryptHash().toBigInteger();
+        } else {
+            h  = getScryptHash().toBigInteger();
+        }
         if (h.compareTo(target) > 0) {
             // Proof of work check failed!
             if (throwException)

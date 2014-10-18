@@ -54,12 +54,12 @@ public final class MonetaryFormat {
     public static final MonetaryFormat UBTC = new MonetaryFormat().shift(6).minDecimals(0).optionalDecimals(2);
     /** Standard format for fiat amounts. */
     public static final MonetaryFormat FIAT = new MonetaryFormat().shift(0).minDecimals(2).repeatOptionalDecimals(2, 1);
-    /** Currency code for base 1 Bitcoin. */
-    public static final String CODE_BTC = "BTC";
-    /** Currency code for base 1/1000 Bitcoin. */
-    public static final String CODE_MBTC = "mBTC";
-    /** Currency code for base 1/1000000 Bitcoin. */
-    public static final String CODE_UBTC = "µBTC";
+    /** Currency code for base 1 Dogecoin. */
+    public static final String CODE_BTC = "DOGE";
+    /** Currency code for base 1/1000 Dogecoin. */
+    public static final String CODE_MBTC = "mDOGE";
+    /** Currency code for base 1/1000000 Dogecoin. */
+    public static final String CODE_UBTC = "µDOGE";
 
     private final char negativeSign;
     private final char positiveSign;

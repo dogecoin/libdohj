@@ -246,9 +246,13 @@ public class TransactionOutput extends ChildMessage implements Serializable {
         // formula is wrong for anything that's not a pay-to-address output, unfortunately, we must follow the reference
         // clients wrongness in order to ensure we're considered standard. A better formula would either estimate the
         // size of data needed to satisfy all different script types, or just hard code 33 below.
-        final long size = this.bitcoinSerialize().length + 148;
-        Coin[] nonDustAndRemainder = feePerKbRequired.multiply(size).divideAndRemainder(1000);
-        return nonDustAndRemainder[1].equals(Coin.ZERO) ? nonDustAndRemainder[0] : nonDustAndRemainder[0].add(Coin.SATOSHI);
+
+        // DOGE doesn't enforce these rules. Therefore we consider each output as valid.
+        return Coin.ZERO;
+        /**final BigInteger size = BigInteger.valueOf(this.bitcoinSerialize().length + 148);
+         BigInteger[] nonDustAndRemainder = feePerKbRequired.multiply(size).divideAndRemainder(BigInteger.valueOf(1000));
+         return nonDustAndRemainder[1].equals(BigInteger.ZERO) ? nonDustAndRemainder[0] : nonDustAndRemainder[0].add(BigInteger.ONE);**/
+
     }
 
     /**

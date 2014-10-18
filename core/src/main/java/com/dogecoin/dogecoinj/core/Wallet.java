@@ -3348,6 +3348,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
 
             // If any inputs have already been added, we don't need to get their value from wallet
             Coin totalInput = Coin.ZERO;
+            Coin totalOutput = value;
             for (TransactionInput input : req.tx.getInputs())
                 if (input.getConnectedOutput() != null)
                     totalInput = totalInput.add(input.getConnectedOutput().getValue());
@@ -3357,15 +3358,17 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
 
             List<TransactionInput> originalInputs = new ArrayList<TransactionInput>(req.tx.getInputs());
 
-            // We need to know if we need to add an additional fee because one of our values are smaller than 0.01 BTC
+            // We need to know if we need to add an additional fee because one of our values are smaller than 1 DOGE
             boolean needAtLeastReferenceFee = false;
+            int txOutDustFeeCount = 0;
             if (req.ensureMinRequiredFee && !req.emptyWallet) { // min fee checking is handled later for emptyWallet
                 for (TransactionOutput output : req.tx.getOutputs())
-                    if (output.getValue().compareTo(Coin.CENT) < 0) {
-                        if (output.getValue().compareTo(output.getMinNonDustValue()) < 0)
-                            throw new DustySendRequested();
+                    if (output.getValue().compareTo(Coin.COIN) < 0) { //TXOut lower than 1 DOGE have a 2 DOGE fee!
+                        //TODO Currently Dogecoin doesn't have this. We can put it back in later.
+//                        if (output.getValue().compareTo(output.getMinNonDustValue()) < 0)
+//                            throw new IllegalArgumentException("Tried to send dust with ensureMinRequiredFee set - no way to complete this");
                         needAtLeastReferenceFee = true;
-                        break;
+                        txOutDustFeeCount++; //DOGE: Each TXOut < 1 DOGE needs +1 DOGE fee!
                     }
             }
 
@@ -3381,7 +3384,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
             if (!req.emptyWallet) {
                 // This can throw InsufficientMoneyException.
                 FeeCalculation feeCalculation;
-                feeCalculation = calculateFee(req, value, originalInputs, needAtLeastReferenceFee, candidates);
+                feeCalculation = calculateFee(req, value, originalInputs, needAtLeastReferenceFee, candidates, txOutDustFeeCount);
                 bestCoinSelection = feeCalculation.bestCoinSelection;
                 bestChangeOutput = feeCalculation.bestChangeOutput;
             } else {
@@ -3393,6 +3396,10 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
                 candidates = null;  // Selector took ownership and might have changed candidates. Don't access again.
                 req.tx.getOutput(0).setValue(bestCoinSelection.valueGathered);
                 log.info("  emptying {}", bestCoinSelection.valueGathered.toFriendlyString());
+                totalOutput = bestCoinSelection.valueGathered;
+                if (totalOutput.isLessThan(Coin.valueOf(2, 0)))
+                    throw new InsufficientMoneyException(totalOutput.subtract(Coin.valueOf(2,0)), "Can't spend this due to fee.");
+
             }
 
             for (TransactionOutput output : bestCoinSelection.gathered)
@@ -3404,10 +3411,18 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
                 Transaction tx = req.tx;
                 if (!adjustOutputDownwardsForFee(tx, bestCoinSelection, baseFee, feePerKb))
                     throw new CouldNotAdjustDownwards();
+
+                //Set total output again after we reduced it by the fee. There are 3 cases here at emptying:
+                //1: Balance is >= 2: The fee will be 1 (or more if the size of the tx is bigger.
+                //2: Balance is >= 1 but < 2: The fee will be 1, but the output will be below 1 so additional fee is needed, which we don't have.
+                //3: Balance is > 0 but < 1: We can never spend this due to fee.
+                //4: Balance is 0: This won't happen here.
+                totalOutput = tx.getOutput(0).getValue();
             }
 
             if (bestChangeOutput != null) {
                 req.tx.addOutput(bestChangeOutput);
+                totalOutput = totalOutput.add(bestChangeOutput.getValue());
                 log.info("  with {} change", bestChangeOutput.getValue().toFriendlyString());
             }
 
@@ -3425,7 +3440,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
             if (size > Transaction.MAX_STANDARD_TX_SIZE)
                 throw new ExceededMaxTransactionSize();
 
-            final Coin calculatedFee = req.tx.getFee();
+            final Coin calculatedFee = totalInput.subtract(totalOutput);
             if (calculatedFee != null) {
                 log.info("  with a fee of {}", calculatedFee.toFriendlyString());
             }
@@ -3987,7 +4002,8 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
     //region Fee calculation code
 
     public FeeCalculation calculateFee(SendRequest req, Coin value, List<TransactionInput> originalInputs,
-                                       boolean needAtLeastReferenceFee, LinkedList<TransactionOutput> candidates) throws InsufficientMoneyException {
+                                       boolean needAtLeastReferenceFee, LinkedList<TransactionOutput> candidates,
+                                       int txOutDustFeeCount  ) throws InsufficientMoneyException {
         checkState(lock.isHeldByCurrentThread());
         FeeCalculation result = new FeeCalculation();
         // There are 3 possibilities for what adding change might do:
@@ -4018,7 +4034,11 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
                 fees = fees.add(req.feePerKb);  // First time around the loop.
             }
             if (needAtLeastReferenceFee && fees.compareTo(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE) < 0)
-                fees = Transaction.REFERENCE_DEFAULT_MIN_TX_FEE;
+                fees = Transaction.REFERENCE_DEFAULT_MIN_TX_FEE; 
+            //DOGE: Add 1 DOGE fee per txOut < 1 DOGE
+            if (txOutDustFeeCount > 0)
+                fees = fees.add(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(txOutDustFeeCount));
+
 
             valueNeeded = value.add(fees);
             if (additionalValueForNextCategory != null)
@@ -4049,12 +4069,11 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
             if (additionalValueSelected != null)
                 change = change.add(additionalValueSelected);
 
-            // If change is < 0.01 BTC, we will need to have at least minfee to be accepted by the network
-            if (req.ensureMinRequiredFee && !change.equals(Coin.ZERO) &&
-                    change.compareTo(Coin.CENT) < 0 && fees.compareTo(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE) < 0) {
+            // If change is < 1 DOGE, we will need to have at least minfee to be accepted by the network
+            if (req.ensureMinRequiredFee && !change.equals(Coin.ZERO) && change.isLessThan(Coin.COIN)) {
                 // This solution may fit into category 2, but it may also be category 3, we'll check that later
                 eitherCategory2Or3 = true;
-                additionalValueForNextCategory = Coin.CENT;
+                additionalValueForNextCategory = Coin.COIN;
                 // If the change is smaller than the fee we want to add, this will be negative
                 change = change.subtract(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.subtract(fees));
             }
@@ -4070,11 +4089,13 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
                     changeAddress = getChangeAddress();
                 changeOutput = new TransactionOutput(params, req.tx, change, changeAddress);
                 // If the change output would result in this transaction being rejected as dust, just drop the change and make it a fee
-                if (req.ensureMinRequiredFee && Transaction.MIN_NONDUST_OUTPUT.compareTo(change) >= 0) {
+                if (req.ensureMinRequiredFee && Coin.COIN.compareTo(change) > 0) {
                     // This solution definitely fits in category 3
                     isCategory3 = true;
-                    additionalValueForNextCategory = Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.add(
-                                                     Transaction.MIN_NONDUST_OUTPUT.add(Coin.SATOSHI));
+                    //additionalValueForNextCategory = Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.add(
+                    //                                 Transaction.MIN_NONDUST_OUTPUT.add(BigInteger.ONE));
+                    additionalValueForNextCategory = Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.add(Coin.COIN);
+                    //DOGE: We don't have a min value, but we add more fees for tx < 1
                 } else {
                     size += changeOutput.bitcoinSerialize().length + VarInt.sizeOf(req.tx.getOutputs().size()) - VarInt.sizeOf(req.tx.getOutputs().size() - 1);
                     // This solution is either category 1 or 2
@@ -4114,7 +4135,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
                 // If we are in selection2, we will require at least CENT additional. If we do that, there is no way
                 // we can end up back here because CENT additional will always get us to 1
                 checkState(selection2 == null);
-                checkState(additionalValueForNextCategory.equals(Coin.CENT));
+                checkState(additionalValueForNextCategory.equals(Coin.COIN));
                 selection2 = selection;
                 selection2Change = checkNotNull(changeOutput); // If we get no change in category 2, we are actually in category 3
             } else {
