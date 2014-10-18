@@ -21,6 +21,7 @@ import com.dogecoin.dogecoinj.params.*;
 import com.dogecoin.dogecoinj.script.Script;
 import com.dogecoin.dogecoinj.script.ScriptOpCodes;
 import com.google.common.base.Objects;
+import com.google.common.math.LongMath;
 import org.spongycastle.util.encoders.Hex;
 
 import javax.annotation.Nullable;
@@ -142,12 +143,12 @@ public abstract class NetworkParameters implements Serializable {
      * This is 92bn! We don't expect single transactions or blocks with that value.
      * Therefore we can assume this will suffice.
      */
-    public static final long MAX_COINS = Long.MAX_VALUE / Coin.SMALLEST_UNIT_EXPONENT;
+    public static final long MAX_COINS = Long.MAX_VALUE / LongMath.pow(10, Coin.SMALLEST_UNIT_EXPONENT);
 
     /**
      * The maximum money to be generated
      */
-    public static final Coin MAX_MONEY = COIN.multiply(MAX_COINS);
+    public static final Coin MAX_MONEY = Coin.valueOf(Long.MAX_VALUE);
 
     /** Alias for TestNet3Params.get(), use that instead. */
     @Deprecated

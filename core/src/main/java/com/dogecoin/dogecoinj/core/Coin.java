@@ -82,7 +82,7 @@ public final class Coin implements Monetary, Comparable<Coin>, Serializable {
      */
     public final long value;
 
-    private final long MAX_SATOSHIS = COIN_VALUE * NetworkParameters.MAX_COINS;
+    private final long MAX_SATOSHIS = Long.MAX_VALUE;
 
     private Coin(final long satoshis) {
         checkArgument(-MAX_SATOSHIS <= satoshis && satoshis <= MAX_SATOSHIS,
