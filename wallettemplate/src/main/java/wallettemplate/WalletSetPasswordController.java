@@ -1,6 +1,6 @@
 package wallettemplate;
 
-import org.bitcoinj.crypto.KeyCrypterScrypt;
+import com.dogecoin.dogecoinj.crypto.KeyCrypterScrypt;
 import javafx.event.ActionEvent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;

@@ -1,8 +1,8 @@
 package wallettemplate.controls;
 
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.AddressFormatException;
-import org.bitcoinj.core.NetworkParameters;
+import com.dogecoin.dogecoinj.core.Address;
+import com.dogecoin.dogecoinj.core.AddressFormatException;
+import com.dogecoin.dogecoinj.core.NetworkParameters;
 import javafx.scene.Node;
 import javafx.scene.control.TextField;
 import wallettemplate.utils.TextFieldValidator;

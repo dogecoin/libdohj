@@ -1,13 +1,13 @@
 package wallettemplate;
 
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.kits.WalletAppKit;
-import org.bitcoinj.params.MainNetParams;
-import org.bitcoinj.params.RegTestParams;
-import org.bitcoinj.params.TestNet3Params;
-import org.bitcoinj.utils.BriefLogFormatter;
-import org.bitcoinj.utils.Threading;
-import org.bitcoinj.wallet.DeterministicSeed;
+import com.dogecoin.dogecoinj.core.NetworkParameters;
+import com.dogecoin.dogecoinj.kits.WalletAppKit;
+import com.dogecoin.dogecoinj.params.MainNetParams;
+import com.dogecoin.dogecoinj.params.RegTestParams;
+import com.dogecoin.dogecoinj.params.TestNet3Params;
+import com.dogecoin.dogecoinj.utils.BriefLogFormatter;
+import com.dogecoin.dogecoinj.utils.Threading;
+import com.dogecoin.dogecoinj.wallet.DeterministicSeed;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -80,7 +80,7 @@ public class Main extends Application {
 
         // Make log output concise.
         BriefLogFormatter.init();
-        // Tell bitcoinj to run event handlers on the JavaFX UI thread. This keeps things simple and means
+        // Tell dogecoinj to run event handlers on the JavaFX UI thread. This keeps things simple and means
         // we cannot forget to switch threads when adding event handlers. Unfortunately, the DownloadListener
         // we give to the app kit is currently an exception and runs on a library thread. It'll get fixed in
         // a future version.
