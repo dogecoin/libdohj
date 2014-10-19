@@ -66,7 +66,7 @@ public class BuildCheckpoints {
         long now = new Date().getTime() / 1000;
         peerGroup.setFastCatchupTimeSecs(now);
 
-        final long oneMonthAgo = now - (86400 * 30);
+        final long oneMonthAgo = now - (86400 * 7); // DOGE has much more blocks so a week is still safe enough
 
         chain.addListener(new AbstractBlockChainListener() {
             @Override
@@ -143,15 +143,15 @@ public class BuildCheckpoints {
         checkState(manager.numCheckpoints() == expectedSize);
 
         if (PARAMS.getId().equals(NetworkParameters.ID_MAINNET)) {
-            StoredBlock test = manager.getCheckpointBefore(1390500000); // Thu Jan 23 19:00:00 CET 2014
-            checkState(test.getHeight() == 280224);
+            StoredBlock test = manager.getCheckpointBefore(1412763470); // Block 408005
+            checkState(test.getHeight() == 408000);
             checkState(test.getHeader().getHashAsString()
-                    .equals("00000000000000000b5d59a15f831e1c45cb688a4db6b0a60054d49a9997fa34"));
+                    .equals("c5226afea3e6116b44b89a0a9bb0b04ecf3e57f68a9faddcbc608e626f13ef79"));
         } else if (PARAMS.getId().equals(NetworkParameters.ID_TESTNET)) {
-            StoredBlock test = manager.getCheckpointBefore(1390500000); // Thu Jan 23 19:00:00 CET 2014
-            checkState(test.getHeight() == 167328);
+            StoredBlock test = manager.getCheckpointBefore(1412807522); // Block 216005
+            checkState(test.getHeight() == 216000);
             checkState(test.getHeader().getHashAsString()
-                    .equals("0000000000035ae7d5025c2538067fe7adb1cf5d5d9c31b024137d9090ed13a9"));
+                    .equals("3071747375000ad02a4c23893039c3cf472e9f91f01621fd59b1b435b12ce912"));
         }
     }
 }
