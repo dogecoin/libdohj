@@ -1,8 +1,10 @@
-Build status: [![Build Status](https://travis-ci.org/bitcoinj/bitcoinj.png?branch=master)](https://travis-ci.org/bitcoinj/bitcoinj)
+### !!!THIS BRANCH IS WIP!!!
+### !!!THIS BRANCH IS WIP!!!
 
-### Welcome to bitcoinj
+### Welcome to dogecoinj
 
-The bitcoinj library is a Java implementation of the Bitcoin protocol, which allows it to maintain a wallet and send/receive transactions without needing a local copy of Bitcoin Core. It comes with full documentation and some example apps showing how to use it.
+The dogecoinj library is a Java implementation of the Dogecoin protocol, which allows it to maintain a wallet and send/receive transactions without needing a local copy of Dogecoin Core. It comes with full documentation and some example apps showing how to use it.
+This is a port of bitcoinj. All credits for the hard work goes to the bitcoinj team. The Dogecoin developers did the adaption to the Dogecoin protocol.
 
 ### Technologies
 
@@ -39,13 +41,13 @@ These are found in the `examples` module.
 
 #### Forwarding service
 
-This will download the block chain and eventually print a Bitcoin address that it has generated.
+This will download the block chain and eventually print a Dogecoin address that it has generated.
 
 If you send coins to that address, it will forward them on to the address you specified.
 
 ```
   cd examples
-  mvn exec:java -Dexec.mainClass=com.dogecoin.dogecoinj.examples.ForwardingService -Dexec.args="<insert a bitcoin address here>"
+  mvn exec:java -Dexec.mainClass=com.dogecoin.dogecoinj.examples.ForwardingService -Dexec.args="<insert a dogecoin address here>"
 ```
 
 Note that this example app *does not use checkpointing*, so the initial chain sync will be pretty slow. You can make an app that starts up and does the initial sync much faster by including a checkpoints file; see the documentation for
