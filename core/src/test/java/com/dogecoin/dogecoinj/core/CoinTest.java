@@ -99,10 +99,10 @@ public class CoinTest {
 
     @Test
     public void testToFriendlyString() {
-        assertEquals("1.00 BTC", COIN.toFriendlyString());
-        assertEquals("1.23 BTC", valueOf(1, 23).toFriendlyString());
-        assertEquals("0.001 BTC", COIN.divide(1000).toFriendlyString());
-        assertEquals("-1.23 BTC", valueOf(1, 23).negate().toFriendlyString());
+        assertEquals("1.00 DOGE", COIN.toFriendlyString());
+        assertEquals("1.23 DOGE", valueOf(1, 23).toFriendlyString());
+        assertEquals("0.001 DOGE", COIN.divide(1000).toFriendlyString());
+        assertEquals("-1.23 DOGE", valueOf(1, 23).negate().toFriendlyString());
     }
 
     /**
@@ -121,10 +121,9 @@ public class CoinTest {
         assertEquals("54321.12345", parseCoin("54321.12345").toPlainString());
         assertEquals("654321.123456", parseCoin("654321.123456").toPlainString());
         assertEquals("7654321.1234567", parseCoin("7654321.1234567").toPlainString());
-        try {
-            assertEquals("87654321.12345678", parseCoin("87654321.12345678").toPlainString());
-            Assert.fail();  // More than MAX_MONEY
-        } catch (Exception e) {}
+
+        // More than MAX_MONEY. This will overlow to 0
+        assertEquals("0", parseCoin(String.valueOf(Long.MAX_VALUE + 1)).toPlainString());
 
         // check there are no trailing zeros
         assertEquals("1", parseCoin("1.0").toPlainString());
