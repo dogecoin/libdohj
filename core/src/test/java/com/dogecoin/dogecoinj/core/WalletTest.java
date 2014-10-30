@@ -52,6 +52,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.dogecoin.dogecoinj.core.Coin.*;
 import static com.dogecoin.dogecoinj.core.Utils.HEX;
@@ -78,6 +79,7 @@ public class WalletTest extends TestWithWallet {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        // TODO: Move these fields into the right tests so we don't create two wallets for every test case.
         encryptedWallet = new Wallet(params);
         myEncryptedAddress = encryptedWallet.freshReceiveKey().toAddress(params);
         encryptedWallet.encrypt(PASSWORD1);
@@ -96,7 +98,6 @@ public class WalletTest extends TestWithWallet {
         createMarriedWallet(threshold, numKeys, true);
     }
 
-    
     private void createMarriedWallet(int threshold, int numKeys, boolean addSigners) throws BlockStoreException {
         wallet = new Wallet(params);
         blockStore = new MemoryBlockStore(params);
@@ -1956,43 +1957,45 @@ public class WalletTest extends TestWithWallet {
         // Generate a ton of small outputs
         StoredBlock block = new StoredBlock(makeSolvedTestBlock(blockStore, notMyAddr), BigInteger.ONE, 1);
         int i = 0;
-        while (i <= CENT.divide(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE)) {
-            Transaction tx = createFakeTxWithChangeAddress(params, Transaction.REFERENCE_DEFAULT_MIN_TX_FEE, myAddress, notMyAddr);
+        Coin tenThousand = Coin.valueOf(10000);
+        while (i <= 100) {
+            Transaction tx = createFakeTxWithChangeAddress(params, tenThousand, myAddress, notMyAddr);
             tx.getInput(0).setSequenceNumber(i++); // Keep every transaction unique
             wallet.receiveFromBlock(tx, block, AbstractBlockChain.NewBlockType.BEST_CHAIN, i);
         }
+        Coin balance = wallet.getBalance();
 
         // Create a spend that will throw away change (category 3 type 2 in which the change causes fee which is worth more than change)
-        SendRequest request1 = SendRequest.to(notMyAddr, CENT.add(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE).subtract(SATOSHI));
+        SendRequest request1 = SendRequest.to(notMyAddr, balance.subtract(SATOSHI));
         wallet.completeTx(request1);
         assertEquals(SATOSHI, request1.tx.getFee());
         assertEquals(request1.tx.getInputs().size(), i); // We should have spent all inputs
 
         // Give us one more input...
-        Transaction tx1 = createFakeTxWithChangeAddress(params, Transaction.REFERENCE_DEFAULT_MIN_TX_FEE, myAddress, notMyAddr);
+        Transaction tx1 = createFakeTxWithChangeAddress(params, tenThousand, myAddress, notMyAddr);
         tx1.getInput(0).setSequenceNumber(i++); // Keep every transaction unique
         wallet.receiveFromBlock(tx1, block, AbstractBlockChain.NewBlockType.BEST_CHAIN, i);
 
         // ... and create a spend that will throw away change (category 3 type 1 in which the change causes dust output)
-        SendRequest request2 = SendRequest.to(notMyAddr, CENT.add(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE).subtract(SATOSHI));
+        SendRequest request2 = SendRequest.to(notMyAddr, balance.subtract(SATOSHI));
         wallet.completeTx(request2);
         assertEquals(SATOSHI, request2.tx.getFee());
         assertEquals(request2.tx.getInputs().size(), i - 1); // We should have spent all inputs - 1
 
         // Give us one more input...
-        Transaction tx2 = createFakeTxWithChangeAddress(params, Transaction.REFERENCE_DEFAULT_MIN_TX_FEE, myAddress, notMyAddr);
+        Transaction tx2 = createFakeTxWithChangeAddress(params, tenThousand, myAddress, notMyAddr);
         tx2.getInput(0).setSequenceNumber(i++); // Keep every transaction unique
         wallet.receiveFromBlock(tx2, block, AbstractBlockChain.NewBlockType.BEST_CHAIN, i);
 
         // ... and create a spend that will throw away change (category 3 type 1 in which the change causes dust output)
         // but that also could have been category 2 if it wanted
-        SendRequest request3 = SendRequest.to(notMyAddr, CENT.add(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE).subtract(SATOSHI));
+        SendRequest request3 = SendRequest.to(notMyAddr, CENT.add(tenThousand).subtract(SATOSHI));
         wallet.completeTx(request3);
         assertEquals(SATOSHI, request3.tx.getFee());
         assertEquals(request3.tx.getInputs().size(), i - 2); // We should have spent all inputs - 2
 
         //
-        SendRequest request4 = SendRequest.to(notMyAddr, CENT.add(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE).subtract(SATOSHI));
+        SendRequest request4 = SendRequest.to(notMyAddr, balance.subtract(SATOSHI));
         request4.feePerKb = Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.divide(request3.tx.bitcoinSerialize().length);
         wallet.completeTx(request4);
         assertEquals(SATOSHI, request4.tx.getFee());
@@ -2000,24 +2003,24 @@ public class WalletTest extends TestWithWallet {
 
         // Give us a few more inputs...
         while (wallet.getBalance().compareTo(CENT.multiply(2)) < 0) {
-            Transaction tx3 = createFakeTxWithChangeAddress(params, Transaction.REFERENCE_DEFAULT_MIN_TX_FEE, myAddress, notMyAddr);
+            Transaction tx3 = createFakeTxWithChangeAddress(params, tenThousand, myAddress, notMyAddr);
             tx3.getInput(0).setSequenceNumber(i++); // Keep every transaction unique
             wallet.receiveFromBlock(tx3, block, AbstractBlockChain.NewBlockType.BEST_CHAIN, i);
         }
 
         // ...that is just slightly less than is needed for category 1
-        SendRequest request5 = SendRequest.to(notMyAddr, CENT.add(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE).subtract(SATOSHI));
+        SendRequest request5 = SendRequest.to(notMyAddr, CENT.add(tenThousand).subtract(SATOSHI));
         wallet.completeTx(request5);
         assertEquals(SATOSHI, request5.tx.getFee());
         assertEquals(1, request5.tx.getOutputs().size()); // We should have no change output
 
         // Give us one more input...
-        Transaction tx4 = createFakeTxWithChangeAddress(params, Transaction.REFERENCE_DEFAULT_MIN_TX_FEE, myAddress, notMyAddr);
+        Transaction tx4 = createFakeTxWithChangeAddress(params, tenThousand, myAddress, notMyAddr);
         tx4.getInput(0).setSequenceNumber(i); // Keep every transaction unique
         wallet.receiveFromBlock(tx4, block, AbstractBlockChain.NewBlockType.BEST_CHAIN, i);
 
         // ... that puts us in category 1 (no fee!)
-        SendRequest request6 = SendRequest.to(notMyAddr, CENT.add(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE).subtract(SATOSHI));
+        SendRequest request6 = SendRequest.to(notMyAddr, CENT.add(tenThousand).subtract(SATOSHI));
         wallet.completeTx(request6);
         assertEquals(ZERO, request6.tx.getFee());
         assertEquals(2, request6.tx.getOutputs().size()); // We should have a change output
@@ -2288,7 +2291,6 @@ public class WalletTest extends TestWithWallet {
         wallet = new Wallet(params);
         // Watch out for wallet-initiated broadcasts.
         MockTransactionBroadcaster broadcaster = new MockTransactionBroadcaster(wallet);
-        wallet.setKeyRotationEnabled(true);
         // Send three cents to two different random keys, then add a key and mark the initial keys as compromised.
         ECKey key1 = new ECKey();
         key1.setCreationTimeSeconds(Utils.currentTimeSeconds() - (86400 * 2));
@@ -2303,14 +2305,11 @@ public class WalletTest extends TestWithWallet {
         assertEquals(0, broadcaster.size());
         assertFalse(wallet.isKeyRotating(key1));
 
-        // We got compromised! We have an old style random-only wallet. So let's upgrade to HD: for that we need a fresh
-        // random key that's not rotating as the wallet won't create a new seed for us, it'll just refuse to upgrade.
+        // We got compromised!
         Utils.rollMockClock(1);
-        ECKey key3 = new ECKey();
-        wallet.importKey(key3);
         wallet.setKeyRotationTime(compromiseTime);
         assertTrue(wallet.isKeyRotating(key1));
-        wallet.maybeDoMaintenance(null, true);
+        wallet.doMaintenance(null, true);
 
         Transaction tx = broadcaster.waitForTransactionAndSucceed();
         final Coin THREE_CENTS = CENT.add(CENT).add(CENT);
@@ -2327,12 +2326,12 @@ public class WalletTest extends TestWithWallet {
 
         // Now receive some more money to the newly derived address via a new block and check that nothing happens.
         sendMoneyToWallet(wallet, CENT, toAddress, AbstractBlockChain.NewBlockType.BEST_CHAIN);
-        assertTrue(wallet.maybeDoMaintenance(null, true).get().isEmpty());
+        assertTrue(wallet.doMaintenance(null, true).get().isEmpty());
         assertEquals(0, broadcaster.size());
 
         // Receive money via a new block on key1 and ensure it shows up as a maintenance task.
         sendMoneyToWallet(wallet, CENT, key1.toAddress(params), AbstractBlockChain.NewBlockType.BEST_CHAIN);
-        wallet.maybeDoMaintenance(null, true);
+        wallet.doMaintenance(null, true);
         tx = broadcaster.waitForTransactionAndSucceed();
         assertNotNull(wallet.findKeyFromPubHash(tx.getOutput(0).getScriptPubKey().getPubKeyHash()));
         log.info("Unexpected thing: {}", tx);
@@ -2375,12 +2374,66 @@ public class WalletTest extends TestWithWallet {
         // A day later, we get compromised.
         Utils.rollMockClock(86400);
         wallet.setKeyRotationTime(Utils.currentTimeSeconds());
-        wallet.setKeyRotationEnabled(true);
 
-        List<Transaction> txns = wallet.maybeDoMaintenance(null, false).get();
+        List<Transaction> txns = wallet.doMaintenance(null, false).get();
         assertEquals(1, txns.size());
         DeterministicKey watchKey2 = wallet.getWatchingKey();
         assertNotEquals(watchKey1, watchKey2);
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    @Test
+    public void keyRotationHD2() throws Exception {
+        // Check we handle the following scenario: a weak random key is created, then some good random keys are created
+        // but the weakness of the first isn't known yet. The wallet is upgraded to HD based on the weak key. Later, we
+        // find out about the weakness and set the rotation time to after the bad key's creation date. A new HD chain
+        // should be created based on the oldest known good key and the old chain + bad random key should rotate to it.
+
+        // We fix the private keys just to make the test deterministic (last byte differs).
+        Utils.setMockClock();
+        ECKey badKey = ECKey.fromPrivate(Utils.HEX.decode("00905b93f990267f4104f316261fc10f9f983551f9ef160854f40102eb71cffdbb"));
+        badKey.setCreationTimeSeconds(Utils.currentTimeSeconds());
+        Utils.rollMockClock(86400);
+        ECKey goodKey = ECKey.fromPrivate(Utils.HEX.decode("00905b93f990267f4104f316261fc10f9f983551f9ef160854f40102eb71cffdcc"));
+        goodKey.setCreationTimeSeconds(Utils.currentTimeSeconds());
+
+        // Do an upgrade based on the bad key.
+        final AtomicReference<List<DeterministicKeyChain>> fChains = new AtomicReference<List<DeterministicKeyChain>>();
+        KeyChainGroup kcg = new KeyChainGroup(params) {
+
+            {
+                fChains.set(chains);
+            }
+        };
+        kcg.importKeys(badKey, goodKey);
+        Utils.rollMockClock(86400);
+        wallet = new Wallet(params, kcg);   // This avoids the automatic HD initialisation
+        assertTrue(fChains.get().isEmpty());
+        wallet.upgradeToDeterministic(null);
+        DeterministicKey badWatchingKey = wallet.getWatchingKey();
+        assertEquals(badKey.getCreationTimeSeconds(), badWatchingKey.getCreationTimeSeconds());
+        sendMoneyToWallet(wallet, CENT, badWatchingKey.toAddress(params), AbstractBlockChain.NewBlockType.BEST_CHAIN);
+
+        // Now we set the rotation time to the time we started making good keys. This should create a new HD chain.
+        wallet.setKeyRotationTime(goodKey.getCreationTimeSeconds());
+        List<Transaction> txns = wallet.doMaintenance(null, false).get();
+        assertEquals(1, txns.size());
+        Address output = txns.get(0).getOutput(0).getAddressFromP2PKHScript(params);
+        ECKey usedKey = wallet.findKeyFromPubHash(output.getHash160());
+        assertEquals(goodKey.getCreationTimeSeconds(), usedKey.getCreationTimeSeconds());
+        assertEquals(goodKey.getCreationTimeSeconds(), wallet.freshReceiveKey().getCreationTimeSeconds());
+        assertEquals("mrM3TpCnav5YQuVA1xLercCGJH4DXujMtv", usedKey.toAddress(params).toString());
+        DeterministicKeyChain c = fChains.get().get(1);
+        assertEquals(c.getEarliestKeyCreationTime(), goodKey.getCreationTimeSeconds());
+        assertEquals(2, fChains.get().size());
+
+        // Commit the maint txns.
+        wallet.commitTx(txns.get(0));
+
+        // Check next maintenance does nothing.
+        assertTrue(wallet.doMaintenance(null, false).get().isEmpty());
+        assertEquals(c, fChains.get().get(1));
+        assertEquals(2, fChains.get().size());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -2400,13 +2453,12 @@ public class WalletTest extends TestWithWallet {
         }
 
         MockTransactionBroadcaster broadcaster = new MockTransactionBroadcaster(wallet);
-        wallet.setKeyRotationEnabled(true);
 
         Date compromise = Utils.now();
         Utils.rollMockClock(86400);
         wallet.freshReceiveKey();
         wallet.setKeyRotationTime(compromise);
-        wallet.maybeDoMaintenance(null, true);
+        wallet.doMaintenance(null, true);
 
         Transaction tx = broadcaster.waitForTransactionAndSucceed();
         final Coin valueSentToMe = tx.getValueSentToMe(wallet);

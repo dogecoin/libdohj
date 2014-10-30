@@ -33,6 +33,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.protobuf.ByteString;
+import org.bitcoinj.wallet.AllRandomKeysRotating;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongycastle.crypto.params.KeyParameter;
@@ -68,7 +69,7 @@ public class KeyChainGroup implements KeyBag {
 
     private BasicKeyChain basic;
     private NetworkParameters params;
-    private final LinkedList<DeterministicKeyChain> chains;
+    protected final LinkedList<DeterministicKeyChain> chains;
     private final EnumMap<KeyChain.KeyPurpose, DeterministicKey> currentKeys;
 
     private EnumMap<KeyChain.KeyPurpose, Address> currentAddresses;
@@ -630,12 +631,14 @@ public class KeyChainGroup implements KeyBag {
      *         and you should provide the users encryption key.
      * @return the DeterministicKeyChain that was created by the upgrade.
      */
-    public DeterministicKeyChain upgradeToDeterministic(long keyRotationTimeSecs, @Nullable KeyParameter aesKey) throws DeterministicUpgradeRequiresPassword {
-        checkState(chains.isEmpty());
+    public DeterministicKeyChain upgradeToDeterministic(long keyRotationTimeSecs, @Nullable KeyParameter aesKey) throws DeterministicUpgradeRequiresPassword, AllRandomKeysRotating {
         checkState(basic.numKeys() > 0);
         checkArgument(keyRotationTimeSecs >= 0);
-        ECKey keyToUse = basic.findOldestKeyAfter(keyRotationTimeSecs);
-        checkArgument(keyToUse != null, "All keys are considered rotating, so we cannot upgrade deterministically.");
+        // Subtract one because the key rotation time might have been set to the creation time of the first known good
+        // key, in which case, that's the one we want to find.
+        ECKey keyToUse = basic.findOldestKeyAfter(keyRotationTimeSecs - 1);
+        if (keyToUse == null)
+            throw new AllRandomKeysRotating();
 
         if (keyToUse.isEncrypted()) {
             if (aesKey == null) {
@@ -658,7 +661,12 @@ public class KeyChainGroup implements KeyBag {
             throw new IllegalStateException("AES Key was provided but wallet is not encrypted.");
         }
 
-        log.info("Auto-upgrading pre-HD wallet using oldest non-rotating private key");
+        if (chains.isEmpty()) {
+            log.info("Auto-upgrading pre-HD wallet to HD!");
+        } else {
+            log.info("Wallet with existing HD chain is being re-upgraded due to change in key rotation time.");
+        }
+        log.info("Instantiating new HD chain using oldest non-rotating private key (address: {})", keyToUse.toAddress(params));
         byte[] entropy = checkNotNull(keyToUse.getSecretBytes());
         // Private keys should be at least 128 bits long.
         checkState(entropy.length >= DeterministicSeed.DEFAULT_SEED_ENTROPY_BITS / 8);

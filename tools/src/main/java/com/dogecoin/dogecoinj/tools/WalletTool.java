@@ -446,9 +446,10 @@ public class WalletTool {
         long rotationTimeSecs = Utils.currentTimeSeconds();
         if (options.has(dateFlag)) {
             rotationTimeSecs = options.valueOf(dateFlag).getTime() / 1000;
+        } else if (options.has(unixtimeFlag)) {
+            rotationTimeSecs = options.valueOf(unixtimeFlag);
         }
         log.info("Setting wallet key rotation time to {}", rotationTimeSecs);
-        wallet.setKeyRotationEnabled(true);
         wallet.setKeyRotationTime(rotationTimeSecs);
         KeyParameter aesKey = null;
         if (wallet.isEncrypted()) {
@@ -456,7 +457,7 @@ public class WalletTool {
             if (aesKey == null)
                 return;
         }
-        Futures.getUnchecked(wallet.maybeDoMaintenance(aesKey, true));
+        Futures.getUnchecked(wallet.doMaintenance(aesKey, true));
     }
 
     private static void encrypt() {
