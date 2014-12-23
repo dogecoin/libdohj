@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 public class WatchMempool {
     private static Logger log = LoggerFactory.getLogger(WatchMempool.class);
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         BriefLogFormatter.init();
         NetworkParameters params = MainNetParams.get();
         PeerGroup peerGroup = new PeerGroup(params);
@@ -36,6 +36,7 @@ public class WatchMempool {
             @Override
             public void onTransaction(Peer peer, Transaction tx) {
                 try {
+                    log.info("tx {}", tx.getHash());
                     if (tx.getOutputs().size() != 1) return;
                     if (!tx.getOutput(0).getScriptPubKey().isSentToRawPubKey()) return;
                     log.info("Saw raw pay to pubkey {}", tx);
@@ -44,6 +45,7 @@ public class WatchMempool {
                 }
             }
         });
-        peerGroup.startAsync();
+        peerGroup.start();
+        Thread.sleep(Long.MAX_VALUE);
     }
 }

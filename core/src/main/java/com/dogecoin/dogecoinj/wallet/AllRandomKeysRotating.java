@@ -1,4 +1,4 @@
-package org.bitcoinj.wallet;
+package com.dogecoin.dogecoinj.wallet;
 
 /**
  * Indicates that an attempt was made to upgrade a random wallet to deterministic, but there were no non-rotating

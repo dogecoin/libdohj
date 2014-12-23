@@ -39,6 +39,8 @@ public class MainNetParams extends NetworkParameters {
         acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
         port = 22556;
         packetMagic = 0xc0c0c0c0;
+        bip32HeaderPub = 0x0488B21E; //The 4 byte header that serializes in base58 to "xpub".
+        bip32HeaderPriv = 0x0488ADE4; //The 4 byte header that serializes in base58 to "xprv"
         genesisBlock.setDifficultyTarget(0x1e0ffff0L);
         genesisBlock.setTime(1386325540L);
         genesisBlock.setNonce(99943L);

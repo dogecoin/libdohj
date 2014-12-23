@@ -19,6 +19,7 @@ package com.dogecoin.dogecoinj.wallet;
 import com.dogecoin.dogecoinj.core.*;
 import com.dogecoin.dogecoinj.crypto.DeterministicHierarchy;
 import com.dogecoin.dogecoinj.crypto.DeterministicKey;
+import com.dogecoin.dogecoinj.params.MainNetParams;
 import com.dogecoin.dogecoinj.params.UnitTestParams;
 import com.dogecoin.dogecoinj.store.UnreadableWalletException;
 import com.dogecoin.dogecoinj.utils.BriefLogFormatter;
@@ -234,10 +235,11 @@ public class DeterministicKeyChainTest {
         DeterministicKey key3 = chain.getKey(KeyChain.KeyPurpose.CHANGE);
         DeterministicKey key4 = chain.getKey(KeyChain.KeyPurpose.CHANGE);
 
+        NetworkParameters params = MainNetParams.get();
         DeterministicKey watchingKey = chain.getWatchingKey();
-        final String pub58 = watchingKey.serializePubB58();
+        final String pub58 = watchingKey.serializePubB58(params);
         assertEquals("xpub69KR9epSNBM59KLuasxMU5CyKytMJjBP5HEZ5p8YoGUCpM6cM9hqxB9DDPCpUUtqmw5duTckvPfwpoWGQUFPmRLpxs5jYiTf2u6xRMcdhDf", pub58);
-        watchingKey = DeterministicKey.deserializeB58(null, pub58);
+        watchingKey = DeterministicKey.deserializeB58(null, pub58, params);
         watchingKey.setCreationTimeSeconds(100000);
         chain = DeterministicKeyChain.watch(watchingKey);
         assertEquals(DeterministicHierarchy.BIP32_STANDARDISATION_TIME_SECS, chain.getEarliestKeyCreationTime());

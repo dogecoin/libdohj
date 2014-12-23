@@ -1,7 +1,7 @@
 package wallettemplate;
 
 import com.dogecoin.dogecoinj.core.Coin;
-import com.dogecoin.dogecoinj.core.DownloadListener;
+import com.dogecoin.dogecoinj.core.DownloadProgressTracker;
 import com.dogecoin.dogecoinj.utils.MonetaryFormat;
 import com.subgraph.orchid.TorClient;
 import com.subgraph.orchid.TorInitializationListener;
@@ -121,7 +121,7 @@ public class MainController {
         group.play();
     }
 
-    public DownloadListener progressBarUpdater() {
-        return model.getDownloadListener();
+    public DownloadProgressTracker progressBarUpdater() {
+        return model.getDownloadProgressTracker();
     }
 }

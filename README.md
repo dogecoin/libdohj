@@ -8,7 +8,7 @@ This is a port of bitcoinj. All credits for the hard work goes to the bitcoinj t
 
 ### Technologies
 
-* Java 6+
+* Java 6 for the core modules, Java 8 for everything else
 * [Maven 3+](http://maven.apache.org) - for building the project
 * [Orchid](https://github.com/subgraph/Orchid) - for secure communications over [TOR](https://www.torproject.org)
 * [Google Protocol Buffers](https://code.google.com/p/protobuf/) - for use with serialization and hardware communications

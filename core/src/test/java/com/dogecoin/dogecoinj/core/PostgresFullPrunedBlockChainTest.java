@@ -3,6 +3,7 @@ package com.dogecoin.dogecoinj.core;
 import com.dogecoin.dogecoinj.store.BlockStoreException;
 import com.dogecoin.dogecoinj.store.FullPrunedBlockStore;
 import com.dogecoin.dogecoinj.store.PostgresFullPrunedBlockStore;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -13,14 +14,20 @@ import org.junit.Test;
 public class PostgresFullPrunedBlockChainTest extends AbstractFullPrunedBlockChainTest
 {
     // Replace these with your postgres location/credentials and remove @Ignore to test
+    // You can set up a fresh postgres with the command: create user bitcoinj superuser password 'password';
     private static final String DB_HOSTNAME = "localhost";
-    private static final String DB_NAME = "bitcoinj_test";
+    private static final String DB_NAME = "dogecoinj_test";
     private static final String DB_USERNAME = "dogecoinj";
     private static final String DB_PASSWORD = "password";
     private static final String DB_SCHEMA = "blockstore_schema";
 
     // whether to run the test with a schema name
     private boolean useSchema = false;
+
+    @After
+    public void tearDown() throws Exception {
+        ((PostgresFullPrunedBlockStore)store).deleteStore();
+    }
 
     @Override
     public FullPrunedBlockStore createStore(NetworkParameters params, int blockCount)

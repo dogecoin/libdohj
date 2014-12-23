@@ -32,8 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.*;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static com.dogecoin.dogecoinj.core.Utils.*;
@@ -379,7 +377,7 @@ public class Transaction extends ChildMessage implements Serializable {
     }
 
     /**
-     * Returns the difference of {@link Transaction#getValueSentFromMe(TransactionBag)} and {@link Transaction#getValueSentToMe(TransactionBag)}.
+     * Returns the difference of {@link Transaction#getValueSentToMe(TransactionBag)} and {@link Transaction#getValueSentFromMe(TransactionBag)}.
      */
     public Coin getValue(TransactionBag wallet) throws ScriptException {
         return getValueSentToMe(wallet).subtract(getValueSentFromMe(wallet));
@@ -676,8 +674,11 @@ public class Transaction extends ChildMessage implements Serializable {
                 s.append(outpoint.toString());
                 final TransactionOutput connectedOutput = outpoint.getConnectedOutput();
                 if (connectedOutput != null) {
-                    s.append(" hash160:");
-                    s.append(Utils.HEX.encode(connectedOutput.getScriptPubKey().getPubKeyHash()));
+                    Script scriptPubKey = connectedOutput.getScriptPubKey();
+                    if (scriptPubKey.isSentToAddress() || scriptPubKey.isPayToScriptHash()) {
+                        s.append(" hash160:");
+                        s.append(Utils.HEX.encode(scriptPubKey.getPubKeyHash()));
+                    }
                 }
             } catch (Exception e) {
                 s.append("[exception: ").append(e.getMessage()).append("]");
@@ -704,6 +705,9 @@ public class Transaction extends ChildMessage implements Serializable {
             }
             s.append(String.format("%n"));
         }
+        Coin fee = getFee();
+        if (fee != null)
+            s.append("     fee  ").append(fee.toFriendlyString()).append(String.format("%n"));
         return s.toString();
     }
 
@@ -1113,20 +1117,22 @@ public class Transaction extends ChildMessage implements Serializable {
         Collections.shuffle(outputs);
     }
 
-    /** @return the given transaction: same as getInputs().get(index). */
-    public TransactionInput getInput(int index) {
+    /** Same as getInputs().get(index). */
+    public TransactionInput getInput(long index) {
         maybeParse();
-        return inputs.get(index);
+        return inputs.get((int)index);
     }
 
-    public TransactionOutput getOutput(int index) {
+    /** Same as getOutputs().get(index) */
+    public TransactionOutput getOutput(long index) {
         maybeParse();
-        return outputs.get(index);
+        return outputs.get((int)index);
     }
 
+    /** Returns the confidence object that is owned by this transaction object. */
     public synchronized TransactionConfidence getConfidence() {
         if (confidence == null) {
-            confidence = new TransactionConfidence(this);
+            confidence = new TransactionConfidence(getHash());
         }
         return confidence;
     }
@@ -1258,19 +1264,6 @@ public class Transaction extends ChildMessage implements Serializable {
         if (!isTimeLocked())
             return true;
         return false;
-    }
-
-    /**
-     * Parses the string either as a whole number of blocks, or if it contains slashes as a YYYY/MM/DD format date
-     * and returns the lock time in wire format.
-     */
-    public static long parseLockTimeStr(String lockTimeStr) throws ParseException {
-        if (lockTimeStr.indexOf("/") != -1) {
-            SimpleDateFormat format = new SimpleDateFormat("yyyy/MM/dd", Locale.US);
-            Date date = format.parse(lockTimeStr);
-            return date.getTime() / 1000;
-        }
-        return Long.parseLong(lockTimeStr);
     }
 
     /**

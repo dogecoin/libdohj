@@ -17,6 +17,8 @@
 package com.dogecoin.dogecoinj.testing;
 
 import com.dogecoin.dogecoinj.core.*;
+import com.dogecoin.dogecoinj.crypto.TransactionSignature;
+import com.dogecoin.dogecoinj.script.ScriptBuilder;
 import com.dogecoin.dogecoinj.store.BlockStore;
 import com.dogecoin.dogecoinj.store.BlockStoreException;
 
@@ -43,7 +45,8 @@ public class FakeTxBuilder {
         TransactionOutput prevOut = new TransactionOutput(params, prevTx, value, to);
         prevTx.addOutput(prevOut);
         // Connect it.
-        t.addInput(prevOut);
+        t.addInput(prevOut).setScriptSig(ScriptBuilder.createInputScript(TransactionSignature.dummy()));
+        // Fake signature.
         // Serialize/deserialize to ensure internal state is stripped, as if it had been read from the wire.
         return roundTripTransaction(params, t);
     }

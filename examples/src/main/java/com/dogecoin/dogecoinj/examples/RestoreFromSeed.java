@@ -50,7 +50,7 @@ public class RestoreFromSeed {
         chain.addWallet(wallet);
         peers.addWallet(wallet);
 
-        DownloadListener bListener = new DownloadListener() {
+        DownloadProgressTracker bListener = new DownloadProgressTracker() {
             @Override
             public void doneDownload() {
                 System.out.println("blockchain downloaded");
@@ -58,8 +58,7 @@ public class RestoreFromSeed {
         };
 
         // Now we re-download the blockchain. This replays the chain into the wallet. Once this is completed our wallet should know of all its transactions and print the correct balance.
-        peers.startAsync();
-        peers.awaitRunning();
+        peers.start();
         peers.startBlockChainDownload(bListener);
 
         bListener.await();
@@ -68,8 +67,6 @@ public class RestoreFromSeed {
         System.out.println(wallet.toString());
 
         // shutting down again
-        peers.stopAsync();
-        peers.awaitTerminated();
-
+        peers.stop();
     }
 }

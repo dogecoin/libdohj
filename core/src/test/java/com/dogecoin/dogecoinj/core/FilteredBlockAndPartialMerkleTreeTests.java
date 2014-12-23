@@ -17,6 +17,7 @@
 
 package com.dogecoin.dogecoinj.core;
 
+import com.google.common.collect.Lists;
 import com.dogecoin.dogecoinj.core.TransactionConfidence.ConfidenceType;
 import com.dogecoin.dogecoinj.params.UnitTestParams;
 import com.dogecoin.dogecoinj.store.MemoryBlockStore;
@@ -88,6 +89,26 @@ public class FilteredBlockAndPartialMerkleTreeTests extends TestWithPeerGroup {
         assertTrue(txns.contains(tx2.getHash()));
     }
 
+    private Sha256Hash numAsHash(int num) {
+        byte[] bits = new byte[32];
+        bits[0] = (byte) num;
+        return new Sha256Hash(bits);
+    }
+
+    @Test(expected = VerificationException.class)
+    public void merkleTreeMalleability() throws Exception {
+        List<Sha256Hash> hashes = Lists.newArrayList();
+        for (byte i = 1; i <= 10; i++) hashes.add(numAsHash(i));
+        hashes.add(numAsHash(9));
+        hashes.add(numAsHash(10));
+        byte[] includeBits = new byte[2];
+        Utils.setBitLE(includeBits, 9);
+        Utils.setBitLE(includeBits, 10);
+        PartialMerkleTree pmt = PartialMerkleTree.buildFromLeaves(params, includeBits, hashes);
+        List<Sha256Hash> matchedHashes = Lists.newArrayList();
+        pmt.getTxnHashAndMerkleRoot(matchedHashes);
+    }
+
     @Test
     public void serializeDownloadBlockWithWallet() throws Exception {
         unitTestParams = UnitTestParams.get();
@@ -141,10 +162,11 @@ public class FilteredBlockAndPartialMerkleTreeTests extends TestWithPeerGroup {
         super.setUp(blockStore);
         
         peerGroup.addWallet(wallet);
+        peerGroup.setUseLocalhostPeerWhenPossible(false); // Prevents from connecting to bitcoin nodes on localhost.
+
         blockChain.addWallet(wallet);
 
-        peerGroup.startAsync();
-        peerGroup.awaitRunning();
+        peerGroup.start();
 
         // Create a peer.
         InboundMessageQueuer p1 = connectPeer(1);
@@ -186,7 +208,6 @@ public class FilteredBlockAndPartialMerkleTreeTests extends TestWithPeerGroup {
 
         // Peer 1 goes away.
         closePeer(peerOf(p1));
-        peerGroup.stopAsync();
         super.tearDown();
     }
 }

@@ -19,10 +19,10 @@ package com.dogecoin.dogecoinj.core;
 
 import com.dogecoin.dogecoinj.params.MainNetParams;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.net.InetAddresses;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
@@ -38,6 +38,7 @@ import com.dogecoin.dogecoinj.net.discovery.PeerDiscovery;
 import com.dogecoin.dogecoinj.net.discovery.PeerDiscoveryException;
 import com.dogecoin.dogecoinj.net.discovery.TorDiscovery;
 import com.dogecoin.dogecoinj.script.Script;
+import com.dogecoin.dogecoinj.utils.DaemonThreadFactory;
 import com.dogecoin.dogecoinj.utils.ExponentialBackoff;
 import com.dogecoin.dogecoinj.utils.ListenerRegistration;
 import com.dogecoin.dogecoinj.utils.Threading;
@@ -51,6 +52,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
@@ -76,13 +78,23 @@ import static com.google.common.base.Preconditions.checkState;
  * when finished. Note that not all methods of PeerGroup are safe to call from a UI thread as some may do
  * network IO, but starting and stopping the service should be fine.</p>
  */
-public class PeerGroup extends AbstractExecutionThreadService implements TransactionBroadcaster {
+public class PeerGroup implements TransactionBroadcaster {
     private static final Logger log = LoggerFactory.getLogger(PeerGroup.class);
     private static final int DEFAULT_CONNECTIONS = 4;
     private static final int TOR_TIMEOUT_SECONDS = 60;
-    private int maxPeersToDiscoverCount = 100;
+    private int vMaxPeersToDiscoverCount = 100;
 
     protected final ReentrantLock lock = Threading.lock("peergroup");
+
+    // This executor is used to queue up jobs: it's used when we don't want to use locks for mutual exclusion,
+    // typically because the job might call in to user provided code that needs/wants the freedom to use the API
+    // however it wants, or because a job needs to be ordered relative to other jobs like that.
+    protected final ListeningScheduledExecutorService executor;
+
+    // Whether the peer group is currently running. Once shut down it cannot be restarted.
+    private volatile boolean vRunning;
+    // Whether the peer group has been started or not. An unstarted PG does not try to access the network.
+    private volatile boolean vUsedUp;
 
     // Addresses to try to connect to, excluding active peers.
     @GuardedBy("lock") private final PriorityQueue<PeerAddress> inactives;
@@ -107,9 +119,6 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     @GuardedBy("lock") private VersionMessage versionMessage;
     // Switch for enabling download of pending transaction dependencies.
     @GuardedBy("lock") private boolean downloadTxDependencies;
-    // A class that tracks recent transactions that have been broadcast across the network, counts how many
-    // peers announced them and updates the transaction confidence data. It is passed to each Peer.
-    private final MemoryPool memoryPool;
     // How many connections we want to have open at the current time. If we lose connections, we'll try opening more
     // until we reach this count.
     @GuardedBy("lock") private int maxConnections;
@@ -127,7 +136,7 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     @GuardedBy("lock") private boolean ipv6Unreachable = false;
 
     private final NetworkParameters params;
-    private final AbstractBlockChain chain;
+    @Nullable private final AbstractBlockChain chain;
     @GuardedBy("lock") private long fastCatchupTimeSecs;
     private final CopyOnWriteArrayList<Wallet> wallets;
     private final CopyOnWriteArrayList<PeerFilterProvider> peerFilterProviders;
@@ -142,7 +151,8 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
 
         @Override
         public void onBlocksDownloaded(Peer peer, Block block, int blocksLeft) {
-            final double rate = checkNotNull(chain).getFalsePositiveRate();
+            if (chain == null) return;
+            final double rate = chain.getFalsePositiveRate();
             final double target = bloomFilterMerger.getBloomFilterFPRate() * MAX_FP_RATE_INCREASE;
             if (rate > target) {
                 // TODO: Avoid hitting this path if the remote peer didn't acknowledge applying a new filter yet.
@@ -155,48 +165,12 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
 
     private int minBroadcastConnections = 0;
     private final AbstractWalletEventListener walletEventListener = new AbstractWalletEventListener() {
-        // Because calculation of the new filter takes place asynchronously, these flags deduplicate requests.
-        @GuardedBy("this") private boolean sendIfChangedQueued, dontSendQueued;
-
-        private Runnable bloomSendIfChanged = new Runnable() {
-            @Override public void run() {
-                recalculateFastCatchupAndFilter(FilterRecalculateMode.SEND_IF_CHANGED);
-                synchronized (walletEventListener) {
-                    sendIfChangedQueued = false;
-                }
-            }
-        };
-        private Runnable bloomDontSend = new Runnable() {
-            @Override public void run() {
-                recalculateFastCatchupAndFilter(FilterRecalculateMode.DONT_SEND);
-                synchronized (walletEventListener) {
-                    dontSendQueued = false;
-                }
-            }
-        };
-
-        private synchronized void queueRecalc(boolean andTransmit) {
-            if (andTransmit) {
-                if (!sendIfChangedQueued) {
-                    log.info("Queuing recalc of the Bloom filter due to new keys or scripts becoming available");
-                    sendIfChangedQueued = true;
-                    Uninterruptibles.putUninterruptibly(jobQueue, bloomSendIfChanged);
-                }
-            } else {
-                if (!dontSendQueued) {
-                    log.info("Queuing recalc of the Bloom filter due to observing a pay to pubkey output on a relevant tx");
-                    dontSendQueued = true;
-                    Uninterruptibles.putUninterruptibly(jobQueue, bloomDontSend);
-                }
-            }
-        }
-
-        @Override public void onScriptsAdded(Wallet wallet, List<Script> scripts) {
-            queueRecalc(true);
+        @Override public void onScriptsChanged(Wallet wallet, List<Script> scripts, boolean isAddingScripts) {
+            recalculateFastCatchupAndFilter(FilterRecalculateMode.SEND_IF_CHANGED);
         }
 
         @Override public void onKeysAdded(List<ECKey> keys) {
-            queueRecalc(true);
+            recalculateFastCatchupAndFilter(FilterRecalculateMode.SEND_IF_CHANGED);
         }
 
         @Override
@@ -226,9 +200,9 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
             for (TransactionOutput output : tx.getOutputs()) {
                 if (output.getScriptPubKey().isSentToRawPubKey() && output.isMine(wallet)) {
                     if (tx.getConfidence().getConfidenceType() == TransactionConfidence.ConfidenceType.BUILDING)
-                        queueRecalc(true);
+                        recalculateFastCatchupAndFilter(FilterRecalculateMode.SEND_IF_CHANGED);
                     else
-                        queueRecalc(false);
+                        recalculateFastCatchupAndFilter(FilterRecalculateMode.DONT_SEND);
                     return;
                 }
             }
@@ -238,10 +212,7 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     // Exponential backoff for peers starts at 1 second and maxes at 10 minutes.
     private ExponentialBackoff.Params peerBackoffParams = new ExponentialBackoff.Params(1000, 1.5f, 10 * 60 * 1000);
     // Tracks failures globally in case of a network failure.
-    private ExponentialBackoff groupBackoff = new ExponentialBackoff(new ExponentialBackoff.Params(1000, 1.5f, 10 * 1000));
-
-    // Things for the dedicated PeerGroup management thread to do.
-    private LinkedBlockingQueue<Runnable> jobQueue = new LinkedBlockingQueue<Runnable>();
+    @GuardedBy("lock") private ExponentialBackoff groupBackoff = new ExponentialBackoff(new ExponentialBackoff.Params(1000, 1.5f, 10 * 1000));
 
     // This is a synchronized set, so it locks on itself. We use it to prevent TransactionBroadcast objects from
     // being garbage collected if nothing in the apps code holds on to them transitively. See the discussion
@@ -276,7 +247,7 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     public static final double MAX_FP_RATE_INCREASE = 2.0f;
     // An object that calculates bloom filters given a list of filter providers, whilst tracking some state useful
     // for privacy purposes.
-    private FilterMerger bloomFilterMerger;
+    private final FilterMerger bloomFilterMerger;
 
     /** The default timeout between when a connection attempt begins and version message exchange completes */
     public static final int DEFAULT_CONNECT_TIMEOUT_MILLIS = 5000;
@@ -348,6 +319,8 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         peerFilterProviders = new CopyOnWriteArrayList<PeerFilterProvider>();
         this.torClient = torClient;
 
+        executor = createPrivateExecutor();
+
         // This default sentinel value will be overridden by one of two actions:
         //   - adding a peer discovery source sets it to the default
         //   - using connectTo() will increment it by one
@@ -360,11 +333,11 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
 
         downloadTxDependencies = true;
 
-        memoryPool = new MemoryPool();
-
         inactives = new PriorityQueue<PeerAddress>(1, new Comparator<PeerAddress>() {
+            @SuppressWarnings("FieldAccessNotGuarded")   // only called when inactives is accessed, and lock is held then.
             @Override
             public int compare(PeerAddress a, PeerAddress b) {
+                checkState(lock.isHeldByCurrentThread());
                 int result = backoffMap.get(a).compareTo(backoffMap.get(b));
                 // Sort by port if otherwise equals - for testing
                 if (result == 0)
@@ -380,6 +353,23 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         peerEventListeners = new CopyOnWriteArrayList<ListenerRegistration<PeerEventListener>>();
         runningBroadcasts = Collections.synchronizedSet(new HashSet<TransactionBroadcast>());
         bloomFilterMerger = new FilterMerger(DEFAULT_BLOOM_FILTER_FP_RATE);
+    }
+
+    private CountDownLatch executorStartupLatch = new CountDownLatch(1);
+
+    protected ListeningScheduledExecutorService createPrivateExecutor() {
+        ListeningScheduledExecutorService result = MoreExecutors.listeningDecorator(
+                new ScheduledThreadPoolExecutor(1, new DaemonThreadFactory("PeerGroup Thread"))
+        );
+        // Hack: jam the executor so jobs just queue up until the user calls start() on us. For example, adding a wallet
+        // results in a bloom filter recalc being queued, but we don't want to do that until we're actually started.
+        result.execute(new Runnable() {
+            @Override
+            public void run() {
+                Uninterruptibles.awaitUninterruptibly(executorStartupLatch);
+            }
+        });
+        return result;
     }
 
     /**
@@ -419,23 +409,99 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     }
 
     private Runnable triggerConnectionsJob = new Runnable() {
+        private boolean firstRun = true;
+
         @Override
         public void run() {
-            // We have to test the condition at the end, because during startup we need to run this at least once
-            // when isRunning() can return false.
-            do {
-                try {
-                    connectToAnyPeer();
-                } catch (PeerDiscoveryException e) {
-                    groupBackoff.trackFailure();
+            try {
+                go();
+            } catch (Throwable e) {
+                log.error("Exception when trying to build connections", e);  // The executor swallows exceptions :(
+            }
+        }
+
+        public void go() {
+            if (!vRunning) return;
+
+            boolean doDiscovery = false;
+            long now = Utils.currentTimeMillis();
+            lock.lock();
+            try {
+                // First run: try and use a local node if there is one, for the additional security it can provide.
+                // But, not on Android as there are none for this platform: it could only be a malicious app trying
+                // to hijack our traffic.
+                if (!Utils.isAndroidRuntime() && useLocalhostPeerWhenPossible && maybeCheckForLocalhostPeer() && firstRun) {
+                    log.info("Localhost peer detected, trying to use it instead of P2P discovery");
+                    maxConnections = 0;
+                    connectToLocalHost();
+                    return;
                 }
-            } while (isRunning() && countConnectedAndPendingPeers() < getMaxConnections());
+
+                boolean havePeerWeCanTry = !inactives.isEmpty() && backoffMap.get(inactives.peek()).getRetryTime() <= now;
+                doDiscovery = !havePeerWeCanTry;
+            } finally {
+                firstRun = false;
+                lock.unlock();
+            }
+
+            // Don't hold the lock across discovery as this process can be very slow.
+            boolean discoverySuccess = false;
+            if (doDiscovery) {
+                try {
+                    discoverySuccess = discoverPeers() > 0;
+                } catch (PeerDiscoveryException e) {
+                    log.error("Peer discovery failure", e);
+                }
+            }
+
+            long retryTime;
+            PeerAddress addrToTry;
+            lock.lock();
+            try {
+                if (doDiscovery) {
+                    if (discoverySuccess) {
+                        groupBackoff.trackSuccess();
+                    } else {
+                        groupBackoff.trackFailure();
+                    }
+                }
+                // Inactives is sorted by backoffMap time.
+                if (inactives.isEmpty()) {
+                    if (countConnectedAndPendingPeers() < getMaxConnections()) {
+                        log.info("Peer discovery didn't provide us any more peers, will try again later.");
+                        executor.schedule(this, groupBackoff.getRetryTime() - now, TimeUnit.MILLISECONDS);
+                    } else {
+                        // We have enough peers and discovery provided no more, so just settle down. Most likely we
+                        // were given a fixed set of addresses in some test scenario.
+                    }
+                    return;
+                } else {
+                    do {
+                        addrToTry = inactives.poll();
+                    } while (ipv6Unreachable && addrToTry.getAddr() instanceof Inet6Address);
+                    retryTime = backoffMap.get(addrToTry).getRetryTime();
+                }
+                retryTime = Math.max(retryTime, groupBackoff.getRetryTime());
+                if (retryTime > now) {
+                    long delay = retryTime - now;
+                    log.info("Waiting {} msec before next connect attempt {}", delay, addrToTry == null ? "" : "to " + addrToTry);
+                    inactives.add(addrToTry);
+                    executor.schedule(this, delay, TimeUnit.MILLISECONDS);
+                    return;
+                }
+                connectTo(addrToTry, false, vConnectTimeoutMillis);
+            } finally {
+                lock.unlock();
+            }
+            if (countConnectedAndPendingPeers() < getMaxConnections()) {
+                executor.execute(this);   // Try next peer immediately.
+            }
         }
     };
 
     private void triggerConnections() {
         // Run on a background thread due to the need to potentially retry and back off in the background.
-        Uninterruptibles.putUninterruptibly(jobQueue, triggerConnectionsJob);
+        executor.execute(triggerConnectionsJob);
     }
 
     /** The maximum number of connections that we will create to peers. */
@@ -458,8 +524,8 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
             Iterator<InventoryItem> it = items.iterator();
             while (it.hasNext()) {
                 InventoryItem item = it.next();
-                // Check the mempool first.
-                Transaction tx = memoryPool.get(item.hash);
+                // Check the confidence pool first.
+                Transaction tx = chain != null ? chain.getContext().getConfidenceTable().get(item.hash) : null;
                 if (tx != null) {
                     transactions.add(tx);
                     it.remove();
@@ -565,6 +631,10 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
      */
     public void addEventListener(PeerEventListener listener, Executor executor) {
         peerEventListeners.add(new ListenerRegistration<PeerEventListener>(checkNotNull(listener), executor));
+        for (Peer peer : getConnectedPeers())
+            peer.addEventListener(listener, executor);
+        for (Peer peer: getPendingPeers())
+            peer.addEventListener(listener, executor);
     }
 
     /**
@@ -577,7 +647,12 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
 
     /** The given event listener will no longer be called with events. */
     public boolean removeEventListener(PeerEventListener listener) {
-        return ListenerRegistration.removeFromList(listener, peerEventListeners);
+        boolean result = ListenerRegistration.removeFromList(listener, peerEventListeners);
+        for (Peer peer : getConnectedPeers())
+            peer.removeEventListener(listener);
+        for (Peer peer : getPendingPeers())
+            peer.removeEventListener(listener);
+        return result;
     }
 
     /**
@@ -632,11 +707,16 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     }
 
     private void addInactive(PeerAddress peerAddress) {
-        // Deduplicate
-        if (backoffMap.containsKey(peerAddress))
-            return;
-        backoffMap.put(peerAddress, new ExponentialBackoff(peerBackoffParams));
-        inactives.offer(peerAddress);
+        lock.lock();
+        try {
+            // Deduplicate
+            if (backoffMap.containsKey(peerAddress))
+                return;
+            backoffMap.put(peerAddress, new ExponentialBackoff(peerBackoffParams));
+            inactives.offer(peerAddress);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /** Convenience method for addAddress(new PeerAddress(address, params.port)); */
@@ -659,62 +739,41 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         }
     }
 
-    protected void discoverPeers() throws PeerDiscoveryException {
-        checkState(lock.isHeldByCurrentThread());
-        if (peerDiscoverers.isEmpty())
-            throw new PeerDiscoveryException("No peer discoverers registered");
+    /** Returns number of discovered peers. */
+    protected int discoverPeers() throws PeerDiscoveryException {
+        // Don't hold the lock whilst doing peer discovery: it can take a long time and cause high API latency.
+        checkState(!lock.isHeldByCurrentThread());
+        int maxPeersToDiscoverCount = this.vMaxPeersToDiscoverCount;
         long start = System.currentTimeMillis();
         final List<PeerAddress> addressList = Lists.newLinkedList();
-        for (PeerDiscovery peerDiscovery : peerDiscoverers) {
+        for (PeerDiscovery peerDiscovery : peerDiscoverers /* COW */) {
             InetSocketAddress[] addresses;
-            // Don't hold the peergroup lock across peer discovery as it's likely to be very slow and would make the
-            // peergroup API high latency.
-            lock.unlock();
-            try {
-                addresses = peerDiscovery.getPeers(5, TimeUnit.SECONDS);
-            } finally {
-                lock.lock();
-            }
+            addresses = peerDiscovery.getPeers(5, TimeUnit.SECONDS);
             for (InetSocketAddress address : addresses) addressList.add(new PeerAddress(address));
             if (addressList.size() >= maxPeersToDiscoverCount) break;
         }
-        for (PeerAddress address : addressList) {
-            addInactive(address);
+        if (!addressList.isEmpty()) {
+            for (PeerAddress address : addressList) {
+                addInactive(address);
+            }
+            final ImmutableSet<PeerAddress> peersDiscoveredSet = ImmutableSet.copyOf(addressList);
+            for (final ListenerRegistration<PeerEventListener> registration : peerEventListeners /* COW */) {
+                registration.executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        registration.listener.onPeersDiscovered(peersDiscoveredSet);
+                    }
+                });
+            }
         }
-
-        final ImmutableSet<PeerAddress> peersDiscoveredSet = ImmutableSet.copyOf(addressList);
-        for (final ListenerRegistration<PeerEventListener> registration : peerEventListeners) {
-            registration.executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    registration.listener.onPeersDiscovered(peersDiscoveredSet);
-                }
-            });
-        }
-
         log.info("Peer discovery took {}msec and returned {} items",
                 System.currentTimeMillis() - start, addressList.size());
-    }
-
-    @Override
-    protected void run() throws Exception {
-        // Runs in a background thread dedicated to the PeerGroup. Jobs are for handling peer connections with backoff,
-        // and also recalculating filters.
-        while (isRunning()) {
-            jobQueue.take().run();
-        }
+        return addressList.size();
     }
 
     @VisibleForTesting
     void waitForJobQueue() {
-        final CountDownLatch latch = new CountDownLatch(1);
-        Uninterruptibles.putUninterruptibly(jobQueue, new Runnable() {
-            @Override
-            public void run() {
-                latch.countDown();
-            }
-        });
-        Uninterruptibles.awaitUninterruptibly(latch);
+        Futures.getUnchecked(executor.submit(Runnables.doNothing()));
     }
 
     private int countConnectedAndPendingPeers() {
@@ -756,105 +815,103 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         return false;
     }
 
-    /** Picks a peer from discovery and connects to it. If connection fails, picks another and tries again. */
-    protected void connectToAnyPeer() throws PeerDiscoveryException {
-        final State state = state();
-        if (!(state == State.STARTING || state == State.RUNNING)) return;
-
-        PeerAddress addr = null;
-
-        long nowMillis = Utils.currentTimeMillis();
-        long retryTime = 0;
-        lock.lock();
-        try {
-            if (useLocalhostPeerWhenPossible && maybeCheckForLocalhostPeer()) {
-                log.info("Localhost peer detected, trying to use it instead of P2P discovery");
-                maxConnections = 0;
-                connectToLocalHost();
-                return;
-            }
-            if (!haveReadyInactivePeer(nowMillis)) {
-                // Release the lock here because we'll probably do slow things like DNS lookups below,
-                discoverPeers();
-                groupBackoff.trackSuccess();
-                nowMillis = Utils.currentTimeMillis();
-            }
-            if (inactives.size() == 0) {
-                log.debug("Peer discovery didn't provide us any more peers, not trying to build new connection.");
-                return;
-            }
-            while (addr == null || (ipv6Unreachable && addr.getAddr() instanceof Inet6Address))
-                addr = inactives.poll();
-            retryTime = backoffMap.get(addr).getRetryTime();
-        } finally {
-            // discoverPeers might throw an exception if something goes wrong: we then hit this path with addr == null.
-            retryTime = Math.max(retryTime, groupBackoff.getRetryTime());
-            lock.unlock();
-            if (retryTime > nowMillis) {
-                // Sleep until retry time
-                final long millis = retryTime - nowMillis;
-                log.info("Waiting {} msec before next connect attempt {}", millis, addr == null ? "" : "to " + addr);
-                Utils.sleep(millis);
-            }
-        }
-
-        // This method constructs a Peer and puts it into pendingPeers.
-        checkNotNull(addr);   // Help static analysis which can't see that addr is always set if we didn't throw above.
-        connectTo(addr, false, vConnectTimeoutMillis);
-    }
-
-    private boolean haveReadyInactivePeer(long nowMillis) {
-        // No inactive peers to try?
-        if (inactives.size() == 0)
-            return false;
-        // All peers have not reached backoff retry time?
-        if (backoffMap.get(inactives.peek()).getRetryTime() > nowMillis)
-            return false;
-        return true;
-    }
-
-    @Override
-    protected void startUp() throws Exception {
+    /**
+     * Starts the PeerGroup and begins network activity.
+     * @return A future that completes when first connection activity has been triggered (note: not first connection made).
+     */
+    public ListenableFuture startAsync() {
         // This is run in a background thread by the Service implementation.
         if (chain == null) {
             // Just try to help catch what might be a programming error.
             log.warn("Starting up with no attached block chain. Did you forget to pass one to the constructor?");
         }
-        vPingTimer = new Timer("Peer pinging thread", true);
-        if (torClient != null) {
-            log.info("Starting Tor/Orchid ...");
-            torClient.start();
-            torClient.waitUntilReady(TOR_TIMEOUT_SECONDS * 1000);
-            log.info("Tor ready");
-        }
-        channels.startAsync();
-        channels.awaitRunning();
-        triggerConnections();
-    }
-
-    @Override
-    protected void shutDown() throws Exception {
-        // This is run on a separate thread by the Service implementation.
-        vPingTimer.cancel();
-        // Blocking close of all sockets.
-        channels.stopAsync();
-        channels.awaitTerminated();
-        for (PeerDiscovery peerDiscovery : peerDiscoverers) {
-            peerDiscovery.shutdown();
-        }
-        if (torClient != null) {
-            torClient.stop();
-        }
-    }
-
-    @Override
-    protected void triggerShutdown() {
-        // Force the thread to wake up.
-        Uninterruptibles.putUninterruptibly(jobQueue, new Runnable() {
+        checkState(!vUsedUp, "Cannot start a peer group twice");
+        vRunning = true;
+        vUsedUp = true;
+        executorStartupLatch.countDown();
+        // We do blocking waits during startup, so run on the executor thread.
+        return executor.submit(new Runnable() {
             @Override
             public void run() {
+                try {
+                    log.info("Starting ...");
+                    if (torClient != null) {
+                        log.info("Starting Tor/Orchid ...");
+                        torClient.start();
+                        try {
+                            torClient.waitUntilReady(TOR_TIMEOUT_SECONDS * 1000);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                        log.info("Tor ready");
+                    }
+                    channels.startAsync();
+                    channels.awaitRunning();
+                    triggerConnections();
+                    setupPinging();
+                } catch (Throwable e) {
+                    log.error("Exception when starting up", e);  // The executor swallows exceptions :(
+                }
             }
         });
+    }
+
+    /** Does a blocking startup. */
+    public void start() {
+        Futures.getUnchecked(startAsync());
+    }
+
+    /** Can just use start() for a blocking start here instead of startAsync/awaitRunning: PeerGroup is no longer a Guava service. */
+    @Deprecated
+    public void awaitRunning() {
+        waitForJobQueue();
+    }
+
+    public ListenableFuture stopAsync() {
+        checkState(vRunning);
+        vRunning = false;
+        ListenableFuture future = executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    log.info("Stopping ...");
+                    // Blocking close of all sockets.
+                    channels.stopAsync();
+                    channels.awaitTerminated();
+                    for (PeerDiscovery peerDiscovery : peerDiscoverers) {
+                        peerDiscovery.shutdown();
+                    }
+                    if (torClient != null) {
+                        torClient.stop();
+                    }
+                    vRunning = false;
+                } catch (Throwable e) {
+                    log.error("Exception when shutting down", e);  // The executor swallows exceptions :(
+                }
+            }
+        });
+        executor.shutdown();
+        return future;
+    }
+
+    /** Does a blocking stop */
+    public void stop() {
+        try {
+            stopAsync();
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Can just use stop() here instead of stopAsync/awaitTerminated: PeerGroup is no longer a Guava service. */
+    @Deprecated
+    public void awaitTerminated() {
+        try {
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -902,7 +959,15 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         try {
             checkNotNull(provider);
             checkState(!peerFilterProviders.contains(provider));
-            peerFilterProviders.add(provider);
+            // Insert provider at the start. This avoids various concurrency problems that could occur because we need
+            // all providers to be in a consistent, unchanging state whilst the filter is built. Providers can give
+            // this guarantee by taking a lock in their begin method, but if we add to the end of the list here, it
+            // means we establish a lock ordering a > b > c if that's the order the providers were added in. Given that
+            // the main wallet will usually be first, this establishes an ordering wallet > other-provider, which means
+            // other-provider can then not call into the wallet itself. Other providers installed by the API user should
+            // come first so the expected ordering is preserved. This can also manifest itself in providers that use
+            // synchronous RPCs into an actor instead of locking, but the same issue applies.
+            peerFilterProviders.add(0, provider);
 
             // Don't bother downloading block bodies before the oldest keys in all our wallets. Make sure we recalculate
             // if a key is added. Of course, by then we may have downloaded the chain already. Ideally adding keys would
@@ -910,6 +975,20 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
             // all transparently and in the background. But we are a long way from that yet.
             recalculateFastCatchupAndFilter(FilterRecalculateMode.SEND_IF_CHANGED);
             updateVersionMessageRelayTxesBeforeFilter(getVersionMessage());
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Opposite of {@link #addPeerFilterProvider(PeerFilterProvider)}. Again, don't use this for wallets. Does not
+     * trigger recalculation of the filter.
+     */
+    public void removePeerFilterProvider(PeerFilterProvider provider) {
+        lock.lock();
+        try {
+            checkNotNull(provider);
+            checkArgument(peerFilterProviders.remove(provider));
         } finally {
             lock.unlock();
         }
@@ -934,43 +1013,75 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         DONT_SEND,
     }
 
+    private final Map<FilterRecalculateMode, SettableFuture<BloomFilter>> inFlightRecalculations = Maps.newHashMap();
+
     /**
      * Recalculates the bloom filter given to peers as well as the timestamp after which full blocks are downloaded
-     * (instead of only headers).
+     * (instead of only headers). Note that calls made one after another may return the same future, if the request
+     * wasn't processed yet (i.e. calls are deduplicated).
      *
      * @param mode In what situations to send the filter to connected peers.
+     * @return a future that completes once the filter has been calculated (note: this does not mean acknowledged by remote peers).
      */
-    public void recalculateFastCatchupAndFilter(FilterRecalculateMode mode) {
-        lock.lock();
-        try {
-            // Fully verifying mode doesn't use this optimization (it can't as it needs to see all transactions).
-            if (chain != null && chain.shouldVerifyTransactions())
-                return;
-            FilterMerger.Result result = bloomFilterMerger.calculate(ImmutableList.copyOf(peerFilterProviders));
-            boolean send;
-            switch (mode) {
-                case SEND_IF_CHANGED: send = result.changed; break;
-                case DONT_SEND: send = false; break;
-                case FORCE_SEND_FOR_REFRESH: send = true; break;
-                default: throw new UnsupportedOperationException();
-            }
-            if (send) {
-                for (Peer peer : peers) {
-                    // Only query the mempool if this recalculation request is not in order to lower the observed FP
-                    // rate. There's no point querying the mempool when doing this because the FP rate can only go
-                    // down, and we will have seen all the relevant txns before: it's pointless to ask for them again.
-                    peer.setBloomFilter(result.filter, mode != FilterRecalculateMode.FORCE_SEND_FOR_REFRESH);
-                }
-                // Reset the false positive estimate so that we don't send a flood of filter updates
-                // if the estimate temporarily overshoots our threshold.
-                if (chain != null)
-                    chain.resetFalsePositiveEstimate();
-            }
-            // Do this last so that bloomFilter is already set when it gets called.
-            setFastCatchupTimeSecs(result.earliestKeyTimeSecs);
-        } finally {
-            lock.unlock();
+    public ListenableFuture<BloomFilter> recalculateFastCatchupAndFilter(final FilterRecalculateMode mode) {
+        final SettableFuture<BloomFilter> future = SettableFuture.create();
+        synchronized (inFlightRecalculations) {
+            if (inFlightRecalculations.get(mode) != null)
+                return inFlightRecalculations.get(mode);
+            inFlightRecalculations.put(mode, future);
         }
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    go();
+                } catch (Throwable e) {
+                    log.error("Exception when trying to recalculate Bloom filter", e);  // The executor swallows exceptions :(
+                }
+            }
+
+            public void go() {
+                checkState(!lock.isHeldByCurrentThread());
+                // Fully verifying mode doesn't use this optimization (it can't as it needs to see all transactions).
+                if (chain != null && chain.shouldVerifyTransactions())
+                    return;
+                // We only ever call bloomFilterMerger.calculate on jobQueue, so we cannot be calculating two filters at once.
+                FilterMerger.Result result = bloomFilterMerger.calculate(ImmutableList.copyOf(peerFilterProviders /* COW */));
+                boolean send;
+                switch (mode) {
+                    case SEND_IF_CHANGED:
+                        send = result.changed;
+                        break;
+                    case DONT_SEND:
+                        send = false;
+                        break;
+                    case FORCE_SEND_FOR_REFRESH:
+                        send = true;
+                        break;
+                    default:
+                        throw new UnsupportedOperationException();
+                }
+                if (send) {
+                    for (Peer peer : peers /* COW */) {
+                        // Only query the mempool if this recalculation request is not in order to lower the observed FP
+                        // rate. There's no point querying the mempool when doing this because the FP rate can only go
+                        // down, and we will have seen all the relevant txns before: it's pointless to ask for them again.
+                        peer.setBloomFilter(result.filter, mode != FilterRecalculateMode.FORCE_SEND_FOR_REFRESH);
+                    }
+                    // Reset the false positive estimate so that we don't send a flood of filter updates
+                    // if the estimate temporarily overshoots our threshold.
+                    if (chain != null)
+                        chain.resetFalsePositiveEstimate();
+                }
+                // Do this last so that bloomFilter is already set when it gets called.
+                setFastCatchupTimeSecs(result.earliestKeyTimeSecs);
+                synchronized (inFlightRecalculations) {
+                    inFlightRecalculations.put(mode, null);
+                }
+                future.set(result.filter);
+            }
+        });
+        return future;
     }
     
     /**
@@ -1011,9 +1122,14 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
      */
     @Nullable
     public Peer connectTo(InetSocketAddress address) {
-        PeerAddress peerAddress = new PeerAddress(address);
-        backoffMap.put(peerAddress, new ExponentialBackoff(peerBackoffParams));
-        return connectTo(peerAddress, true, vConnectTimeoutMillis);
+        lock.lock();
+        try {
+            PeerAddress peerAddress = new PeerAddress(address);
+            backoffMap.put(peerAddress, new ExponentialBackoff(peerBackoffParams));
+            return connectTo(peerAddress, true, vConnectTimeoutMillis);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
@@ -1021,9 +1137,14 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
      */
     @Nullable
     public Peer connectToLocalHost() {
-        final PeerAddress localhost = PeerAddress.localhost(params);
-        backoffMap.put(localhost, new ExponentialBackoff(peerBackoffParams));
-        return connectTo(localhost, true, vConnectTimeoutMillis);
+        lock.lock();
+        try {
+            final PeerAddress localhost = PeerAddress.localhost(params);
+            backoffMap.put(localhost, new ExponentialBackoff(peerBackoffParams));
+            return connectTo(localhost, true, vConnectTimeoutMillis);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
@@ -1034,13 +1155,14 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
      *                                explicitly requested.
      * @return Peer or null.
      */
-    @Nullable
+    @Nullable @GuardedBy("lock")
     protected Peer connectTo(PeerAddress address, boolean incrementMaxConnections, int connectTimeoutMillis) {
+        checkState(lock.isHeldByCurrentThread());
         VersionMessage ver = getVersionMessage().duplicate();
         ver.bestHeight = chain == null ? 0 : chain.getBestChainHeight();
         ver.time = Utils.currentTimeSeconds();
 
-        Peer peer = new Peer(params, ver, address, chain, memoryPool, downloadTxDependencies);
+        Peer peer = new Peer(params, ver, address, chain, downloadTxDependencies);
         peer.addEventListener(startupListener, Threading.SAME_THREAD);
         peer.setMinProtocolVersion(vMinRequiredProtocolVersion);
         pendingPeers.add(peer);
@@ -1055,16 +1177,10 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         peer.setSocketTimeout(connectTimeoutMillis);
         // When the channel has connected and version negotiated successfully, handleNewPeer will end up being called on
         // a worker thread.
-
         if (incrementMaxConnections) {
             // We don't use setMaxConnections here as that would trigger a recursive attempt to establish a new
             // outbound connection.
-            lock.lock();
-            try {
-                maxConnections++;
-            } finally {
-                lock.unlock();
-            }
+            maxConnections++;
         }
         return peer;
     }
@@ -1105,13 +1221,13 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     }
 
     /**
-     * Download the blockchain from peers. Convenience that uses a {@link DownloadListener} for you.<p>
+     * Download the blockchain from peers. Convenience that uses a {@link DownloadProgressTracker} for you.<p>
      * 
      * This method waits until the download is complete.  "Complete" is defined as downloading
      * from at least one peer all the blocks that are in that peer's inventory.
      */
     public void downloadBlockChain() {
-        DownloadListener listener = new DownloadListener();
+        DownloadProgressTracker listener = new DownloadProgressTracker();
         startBlockChainDownload(listener);
         try {
             listener.await();
@@ -1136,7 +1252,6 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
             // aren't relevant to our wallet. We may still receive some false positives, which is
             // OK because it helps improve wallet privacy. Old nodes will just ignore the message.
             if (bloomFilterMerger.getLastFilter() != null) peer.setBloomFilter(bloomFilterMerger.getLastFilter());
-            // Link the peer to the memory pool so broadcast transactions have their confidence levels updated.
             peer.setDownloadData(false);
             // TODO: The peer should calculate the fast catchup time from the added wallets here.
             for (Wallet wallet : wallets)
@@ -1156,7 +1271,6 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
             for (ListenerRegistration<PeerEventListener> registration : peerEventListeners) {
                 peer.addEventListenerWithoutOnDisconnect(registration.listener, registration.executor);
             }
-            setupPingingForNewPeer(peer);
         } finally {
             lock.unlock();
         }
@@ -1172,71 +1286,42 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         }
     }
 
-    private void setupPingingForNewPeer(final Peer peer) {
-        checkState(lock.isHeldByCurrentThread());
-        if (peer.getPeerVersionMessage().clientVersion < Pong.MIN_PROTOCOL_VERSION)
-            return;
+    @Nullable private volatile ListenableScheduledFuture<?> vPingTask;
+
+    @SuppressWarnings("NonAtomicOperationOnVolatileField")
+    private void setupPinging() {
         if (getPingIntervalMsec() <= 0)
             return;  // Disabled.
-        // Start the process of pinging the peer. Do a ping right now and then ensure there's a fixed delay between
-        // each ping. If the peer is taken out of the peers list then the cycle will stop.
-        //
-        // TODO: This should really be done by a timer integrated with the network thread to avoid races.
-        final Runnable[] pingRunnable = new Runnable[1];
-        pingRunnable[0] = new Runnable() {
-            private boolean firstRun = true;
+
+        vPingTask = executor.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
-                // Ensure that the first ping happens immediately and later pings after the requested delay.
-                if (firstRun) {
-                    firstRun = false;
-                    try {
-                        peer.ping().addListener(this, Threading.SAME_THREAD);
-                    } catch (Exception e) {
-                        log.warn("{}: Exception whilst trying to ping peer: {}", peer, e.toString());
-                        return;
-                    }
-                    return;
-                }
-
-                final long interval = getPingIntervalMsec();
-                if (interval <= 0)
-                    return;  // Disabled.
-                final TimerTask task = new TimerTask() {
-                    @Override
-                    public void run() {
-                        try {
-                            if (!peers.contains(peer) || !PeerGroup.this.isRunning())
-                                return;  // Peer was removed/shut down.
-                            peer.ping().addListener(pingRunnable[0], Threading.SAME_THREAD);
-                        } catch (Exception e) {
-                            log.warn("{}: Exception whilst trying to ping peer: {}", peer, e.toString());
-                        }
-                    }
-                };
                 try {
-                    vPingTimer.schedule(task, interval);
-                } catch (IllegalStateException ignored) {
-                    // This can happen if there's a shutdown race and this runnable is executing whilst the timer is
-                    // simultaneously cancelled.
+                    if (getPingIntervalMsec() <= 0) {
+                        ListenableScheduledFuture<?> task = vPingTask;
+                        if (task != null) {
+                            task.cancel(false);
+                            vPingTask = null;
+                        }
+                        return;  // Disabled.
+                    }
+                    for (Peer peer : getConnectedPeers()) {
+                        if (peer.getPeerVersionMessage().clientVersion < Pong.MIN_PROTOCOL_VERSION)
+                            continue;
+                        peer.ping();
+                    }
+                } catch (Throwable e) {
+                    log.error("Exception in ping loop", e);  // The executor swallows exceptions :(
                 }
             }
-        };
-        pingRunnable[0].run();
+        }, getPingIntervalMsec(), getPingIntervalMsec(), TimeUnit.MILLISECONDS);
     }
 
     private void setDownloadPeer(@Nullable Peer peer) {
         lock.lock();
         try {
-            if (downloadPeer == peer) {
+            if (downloadPeer == peer)
                 return;
-            }
-            if (chain == null) {
-                // PeerGroup creator did not want us to download any data. We still track the download peer for
-                // informational purposes.
-                downloadPeer = peer;
-                return;
-            }
             if (downloadPeer != null) {
                 log.info("Unsetting download peer: {}", downloadPeer);
                 if (downloadListener != null)
@@ -1249,7 +1334,8 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
                 if (downloadListener != null)
                     peer.addEventListener(downloadListener, Threading.SAME_THREAD);
                 downloadPeer.setDownloadData(true);
-                downloadPeer.setDownloadParameters(fastCatchupTimeSecs, bloomFilterMerger.getLastFilter() != null);
+                if (chain != null)
+                    downloadPeer.setDownloadParameters(fastCatchupTimeSecs, bloomFilterMerger.getLastFilter() != null);
             }
         } finally {
             lock.unlock();
@@ -1257,13 +1343,13 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     }
 
     /**
-     * Returns the {@link MemoryPool} created by this peer group to synchronize its peers. The pool tracks advertised
-     * and downloaded transactions so their confidence can be measured as a proportion of how many peers announced it.
-     * With an un-tampered with internet connection, the more peers announce a transaction the more confidence you can
-     * have that it's really valid.
+     * Use {@link com.dogecoin.dogecoinj.core.Context#getConfidenceTable()} instead, which can be retrieved via
+     * {@link com.dogecoin.dogecoinj.core.AbstractBlockChain#getContext()}. Can return null if this peer group was
+     * configured without a block chain object.
      */
-    public MemoryPool getMemoryPool() {
-        return memoryPool;
+    @Deprecated @Nullable
+    public TxConfidenceTable getMemoryPool() {
+        return chain == null ? null : chain.getContext().getConfidenceTable();
     }
 
     /**
@@ -1274,7 +1360,7 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     public void setFastCatchupTimeSecs(long secondsSinceEpoch) {
         lock.lock();
         try {
-            Preconditions.checkState(chain == null || !chain.shouldVerifyTransactions(), "Fast catchup is incompatible with fully verifying");
+            checkState(chain == null || !chain.shouldVerifyTransactions(), "Fast catchup is incompatible with fully verifying");
             fastCatchupTimeSecs = secondsSinceEpoch;
             if (downloadPeer != null) {
                 downloadPeer.setDownloadParameters(secondsSinceEpoch, bloomFilterMerger.getLastFilter() != null);
@@ -1301,8 +1387,7 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
 
     protected void handlePeerDeath(final Peer peer, @Nullable Exception exception) {
         // Peer deaths can occur during startup if a connect attempt after peer discovery aborts immediately.
-        final State state = state();
-        if (state != State.RUNNING && state != State.STARTING) return;
+        if (!isRunning()) return;
 
         int numPeers;
         int numConnectedPeers = 0;
@@ -1404,7 +1489,8 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         }
         final SettableFuture<List<Peer>> future = SettableFuture.create();
         addEventListener(new AbstractPeerEventListener() {
-            @Override public void onPeerConnected(Peer peer, int peerCount) {
+            @Override
+            public void onPeerConnected(Peer peer, int peerCount) {
                 final List<Peer> peers = findPeersOfAtLeastVersion(protocolVersion);
                 if (peers.size() >= numPeers) {
                     future.set(peers);
@@ -1496,7 +1582,8 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
      * bringup of the peer group you can lower it.</p>
      */
     public ListenableFuture<Transaction> broadcastTransaction(final Transaction tx, final int minConnections) {
-        final TransactionBroadcast broadcast = new TransactionBroadcast(this, tx);
+        // TODO: Context being owned by BlockChain isn't right w.r.t future intentions so it shouldn't really be optional here.
+        final TransactionBroadcast broadcast = new TransactionBroadcast(this, chain != null ? chain.getContext() : null, tx);
         broadcast.setMinConnections(minConnections);
         // Send the TX to the wallet once we have a successful broadcast.
         Futures.addCallback(broadcast.future(), new FutureCallback<Transaction>() {
@@ -1561,6 +1648,10 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         lock.lock();
         try {
             this.pingIntervalMsec = pingIntervalMsec;
+            ListenableScheduledFuture<?> task = vPingTask;
+            if (task != null)
+                task.cancel(false);
+            setupPinging();
         } finally {
             lock.unlock();
         }
@@ -1684,7 +1775,7 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
      * @return the maximum number of peers to discover
      */
     public int getMaxPeersToDiscoverCount() {
-        return maxPeersToDiscoverCount;
+        return vMaxPeersToDiscoverCount;
     }
 
     /**
@@ -1693,7 +1784,7 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
      * @param maxPeersToDiscoverCount the maximum number of peers to discover
      */
     public void setMaxPeersToDiscoverCount(int maxPeersToDiscoverCount) {
-        this.maxPeersToDiscoverCount = maxPeersToDiscoverCount;
+        this.vMaxPeersToDiscoverCount = maxPeersToDiscoverCount;
     }
 
     /** See {@link #setUseLocalhostPeerWhenPossible(boolean)} */
@@ -1718,5 +1809,9 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
         } finally {
             lock.unlock();
         }
+    }
+
+    public boolean isRunning() {
+        return vRunning;
     }
 }

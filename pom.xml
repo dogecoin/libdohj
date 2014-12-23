@@ -11,6 +11,7 @@
     <module>core</module>
     <module>examples</module>
     <module>tools</module>
+    <module>wallettemplate</module>
   </modules>
 
   <parent>
@@ -66,13 +67,12 @@
   <!-- Common build plugin configuration -->
   <build>
     <plugins>
-      <!-- Ensure compilation is done under Java 6 for backwards compatibility -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.8</source>
+          <target>1.8</target>
           <showDeprecation>true</showDeprecation>
           <showWarnings>true</showWarnings>
         </configuration>
@@ -86,7 +86,7 @@
         <configuration>
             <serverId>ossrh</serverId>
             <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-            <autoReleaseAfterClose>false</autoReleaseAfterClose>
+            <autoReleaseAfterClose>true</autoReleaseAfterClose>
         </configuration>
       </plugin>
     </plugins>
@@ -119,6 +119,10 @@
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
           <version>2.5</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>2.9.1</version>
         </plugin>
         <plugin>
           <artifactId>maven-resources-plugin</artifactId>
@@ -211,7 +215,6 @@
                   <plugin>
                       <groupId>org.apache.maven.plugins</groupId>
                       <artifactId>maven-javadoc-plugin</artifactId>
-                      <version>2.9.1</version>
                       <executions>
                           <execution>
                               <id>attach-javadocs</id>

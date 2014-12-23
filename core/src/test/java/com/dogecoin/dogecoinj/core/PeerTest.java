@@ -56,7 +56,7 @@ public class PeerTest extends TestWithNetworkConnections {
     private Peer peer;
     private InboundMessageQueuer writeTarget;
     private static final int OTHER_PEER_CHAIN_HEIGHT = 110;
-    private MemoryPool memoryPool;
+    private TxConfidenceTable confidenceTable;
     private final AtomicBoolean fail = new AtomicBoolean(false);
 
 
@@ -77,10 +77,10 @@ public class PeerTest extends TestWithNetworkConnections {
     public void setUp() throws Exception {
         super.setUp();
 
-        memoryPool = new MemoryPool();
+        confidenceTable = blockChain.getContext().getConfidenceTable();
         VersionMessage ver = new VersionMessage(unitTestParams, 100);
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 4000);
-        peer = new Peer(unitTestParams, ver, new PeerAddress(address), blockChain, memoryPool);
+        peer = new Peer(unitTestParams, ver, new PeerAddress(address), blockChain);
         peer.addWallet(wallet);
     }
 
@@ -269,7 +269,7 @@ public class PeerTest extends TestWithNetworkConnections {
         // Check co-ordination of which peer to download via the memory pool.
         VersionMessage ver = new VersionMessage(unitTestParams, 100);
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", 4242);
-        Peer peer2 = new Peer(unitTestParams, ver, new PeerAddress(address), blockChain, memoryPool);
+        Peer peer2 = new Peer(unitTestParams, ver, new PeerAddress(address), blockChain);
         peer2.addWallet(wallet);
         VersionMessage peerVersion = new VersionMessage(unitTestParams, OTHER_PEER_CHAIN_HEIGHT);
         peerVersion.clientVersion = 70001;
@@ -291,7 +291,7 @@ public class PeerTest extends TestWithNetworkConnections {
         GetDataMessage message = (GetDataMessage)outbound(writeTarget);
         assertEquals(1, message.getItems().size());
         assertEquals(tx.getHash(), message.getItems().get(0).hash);
-        assertTrue(memoryPool.maybeWasSeen(tx.getHash()));
+        assertTrue(confidenceTable.maybeWasSeen(tx.getHash()));
 
         // Advertising to peer2 results in no getdata message.
         inbound(writeTarget2, inv);
@@ -445,10 +445,16 @@ public class PeerTest extends TestWithNetworkConnections {
         blockChain.add(b1);
         Utils.rollMockClock(60 * 10);  // 10 minutes later.
         Block b2 = makeSolvedTestBlock(b1);
+        b2.setTime(Utils.currentTimeSeconds());
+        b2.solve();
         Utils.rollMockClock(60 * 10);  // 10 minutes later.
         Block b3 = makeSolvedTestBlock(b2);
+        b3.setTime(Utils.currentTimeSeconds());
+        b3.solve();
         Utils.rollMockClock(60 * 10);
         Block b4 = makeSolvedTestBlock(b3);
+        b4.setTime(Utils.currentTimeSeconds());
+        b4.solve();
 
         // Request headers until the last 2 blocks.
         peer.setDownloadParameters(Utils.currentTimeSeconds() - (600*2) + 1, false);
@@ -533,18 +539,9 @@ public class PeerTest extends TestWithNetworkConnections {
     }
 
     @Test
-    public void recursiveDownloadNew() throws Exception {
-        recursiveDependencyDownload(true);
-    }
-
-    @Test
-    public void recursiveDownloadOld() throws Exception {
-        recursiveDependencyDownload(false);
-    }
-
-    public void recursiveDependencyDownload(boolean useNotFound) throws Exception {
+    public void recursiveDependencyDownload() throws Exception {
         // Using ping or notfound?
-        connectWithVersion(useNotFound ? 70001 : 60001);
+        connectWithVersion(70001);
         // Check that we can download all dependencies of an unconfirmed relevant transaction from the mempool.
         ECKey to = new ECKey();
 
@@ -604,8 +601,6 @@ public class PeerTest extends TestWithNetworkConnections {
         assertEquals(someHash, getdata.getItems().get(2).hash);
         assertEquals(anotherHash, getdata.getItems().get(3).hash);
         long nonce = -1;
-        if (!useNotFound)
-            nonce = ((Ping) outbound(writeTarget)).getNonce();
         // For some random reason, t4 is delivered at this point before it's needed - perhaps it was a Bloom filter
         // false positive. We do this to check that the mempool is being checked for seen transactions before
         // requesting them.
@@ -613,37 +608,25 @@ public class PeerTest extends TestWithNetworkConnections {
         // Deliver the requested transactions.
         inbound(writeTarget, t2);
         inbound(writeTarget, t3);
-        if (useNotFound) {
-            NotFoundMessage notFound = new NotFoundMessage(unitTestParams);
-            notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, someHash));
-            notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, anotherHash));
-            inbound(writeTarget, notFound);
-        } else {
-            inbound(writeTarget, new Pong(nonce));
-        }
+        NotFoundMessage notFound = new NotFoundMessage(unitTestParams);
+        notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, someHash));
+        notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, anotherHash));
+        inbound(writeTarget, notFound);
         assertFalse(futures.isDone());
         // It will recursively ask for the dependencies of t2: t5 and t4, but not t3 because it already found t4.
         getdata = (GetDataMessage) outbound(writeTarget);
         assertEquals(getdata.getItems().get(0).hash, t2.getInput(0).getOutpoint().getHash());
         // t5 isn't found and t4 is.
-        if (useNotFound) {
-            NotFoundMessage notFound = new NotFoundMessage(unitTestParams);
-            notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, t5));
-            inbound(writeTarget, notFound);
-        } else {
-            bouncePing();
-        }
+        notFound = new NotFoundMessage(unitTestParams);
+        notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, t5));
+        inbound(writeTarget, notFound);
         assertFalse(futures.isDone());
         // Continue to explore the t4 branch and ask for t6, which is in the chain.
         getdata = (GetDataMessage) outbound(writeTarget);
         assertEquals(t6, getdata.getItems().get(0).hash);
-        if (useNotFound) {
-            NotFoundMessage notFound = new NotFoundMessage(unitTestParams);
-            notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, t6));
-            inbound(writeTarget, notFound);
-        } else {
-            bouncePing();
-        }
+        notFound = new NotFoundMessage(unitTestParams);
+        notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, t6));
+        inbound(writeTarget, notFound);
         pingAndWait(writeTarget);
         // That's it, we explored the entire tree.
         assertTrue(futures.isDone());
@@ -653,23 +636,9 @@ public class PeerTest extends TestWithNetworkConnections {
         assertTrue(results.contains(t4));
     }
 
-    private void bouncePing() throws Exception {
-        Ping ping = (Ping) outbound(writeTarget);
-        inbound(writeTarget, new Pong(ping.getNonce()));
-    }
-
     @Test
     public void timeLockedTransactionNew() throws Exception {
-        timeLockedTransaction(true);
-    }
-
-    @Test
-    public void timeLockedTransactionOld() throws Exception {
-        timeLockedTransaction(false);
-    }
-
-    public void timeLockedTransaction(boolean useNotFound) throws Exception {
-        connectWithVersion(useNotFound ? 70001 : 60001);
+        connectWithVersion(70001);
         // Test that if we receive a relevant transaction that has a lock time, it doesn't result in a notification
         // until we explicitly opt in to seeing those.
         Wallet wallet = new Wallet(unitTestParams);
@@ -686,11 +655,7 @@ public class PeerTest extends TestWithNetworkConnections {
         Transaction t1 = FakeTxBuilder.createFakeTx(unitTestParams, COIN, key);
         inbound(writeTarget, t1);
         GetDataMessage getdata = (GetDataMessage) outbound(writeTarget);
-        if (useNotFound) {
-            inbound(writeTarget, new NotFoundMessage(unitTestParams, getdata.getItems()));
-        } else {
-            bouncePing();
-        }
+        inbound(writeTarget, new NotFoundMessage(unitTestParams, getdata.getItems()));
         pingAndWait(writeTarget);
         Threading.waitForUserCode();
         assertNotNull(vtx[0]);
@@ -705,45 +670,28 @@ public class PeerTest extends TestWithNetworkConnections {
         wallet.setAcceptRiskyTransactions(true);
         inbound(writeTarget, t2);
         getdata = (GetDataMessage) outbound(writeTarget);
-        if (useNotFound) {
-            inbound(writeTarget, new NotFoundMessage(unitTestParams, getdata.getItems()));
-        } else {
-            bouncePing();
-        }
+        inbound(writeTarget, new NotFoundMessage(unitTestParams, getdata.getItems()));
         pingAndWait(writeTarget);
         Threading.waitForUserCode();
         assertEquals(t2, vtx[0]);
     }
 
     @Test
-    public void rejectTimeLockedDependencyNew() throws Exception {
+    public void rejectTimeLockedDependency() throws Exception {
         // Check that we also verify the lock times of dependencies. Otherwise an attacker could still build a tx that
         // looks legitimate and useful but won't actually ever confirm, by sending us a normal tx that spends a
         // timelocked tx.
-        checkTimeLockedDependency(false, true);
+        checkTimeLockedDependency(false);
     }
 
     @Test
-    public void acceptTimeLockedDependencyNew() throws Exception {
-        checkTimeLockedDependency(true, true);
+    public void acceptTimeLockedDependency() throws Exception {
+        checkTimeLockedDependency(true);
     }
 
-    @Test
-    public void rejectTimeLockedDependencyOld() throws Exception {
-        // Check that we also verify the lock times of dependencies. Otherwise an attacker could still build a tx that
-        // looks legitimate and useful but won't actually ever confirm, by sending us a normal tx that spends a
-        // timelocked tx.
-        checkTimeLockedDependency(false, false);
-    }
-
-    @Test
-    public void acceptTimeLockedDependencyOld() throws Exception {
-        checkTimeLockedDependency(true, false);
-    }
-
-    private void checkTimeLockedDependency(boolean shouldAccept, boolean useNotFound) throws Exception {
+    private void checkTimeLockedDependency(boolean shouldAccept) throws Exception {
         // Initial setup.
-        connectWithVersion(useNotFound ? 70001 : 60001);
+        connectWithVersion(70001);
         Wallet wallet = new Wallet(unitTestParams);
         ECKey key = wallet.freshReceiveKey();
         wallet.setAcceptRiskyTransactions(shouldAccept);
@@ -780,19 +728,13 @@ public class PeerTest extends TestWithNetworkConnections {
         getdata = (GetDataMessage) outbound(writeTarget);
         assertEquals(t2.getHash(), getdata.getItems().get(0).hash);
         inbound(writeTarget, t2);
-        if (!useNotFound)
-            bouncePing();
         // We request t3.
         getdata = (GetDataMessage) outbound(writeTarget);
         assertEquals(t3, getdata.getItems().get(0).hash);
         // Can't find it: bottom of tree.
-        if (useNotFound) {
-            NotFoundMessage notFound = new NotFoundMessage(unitTestParams);
-            notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, t3));
-            inbound(writeTarget, notFound);
-        } else {
-            bouncePing();
-        }
+        NotFoundMessage notFound = new NotFoundMessage(unitTestParams);
+        notFound.addItem(new InventoryItem(InventoryItem.Type.Transaction, t3));
+        inbound(writeTarget, notFound);
         pingAndWait(writeTarget);
         Threading.waitForUserCode();
         // We're done but still not notified because it was timelocked.

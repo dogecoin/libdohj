@@ -95,6 +95,7 @@
 
     <build>
         <plugins>
+            <!-- Ensure compilation is done under Java 6 for backwards compatibility -->
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
@@ -121,7 +122,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.9.1</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -164,7 +164,7 @@
                                     <!-- Format is URN of groupId:artifactId:version:type:classifier:scope:hash -->
                                     <!-- classifier is "null" if not present -->
                                     <urns>
-                                        <urn>com.dogecoin:orchid:1.0:jar:null:compile:a201b0e6a0e18c6b3435753103f8d3e707c718ad</urn>
+                                        <urn>com.dogecoin:orchid:1.1:jar:null:compile:393d53cad40f32f1c00a717326deeb4bde8ee57b</urn>
                                         <urn>cglib:cglib-nodep:2.2:jar:null:test:59afed7ab65e7ec6585d5bc60556c3cbd203532b</urn>
                                         <urn>com.google.code.findbugs:jsr305:2.0.1:jar:null:compile:516c03b21d50a644d538de0f0369c620989cd8f0</urn>
                                         <urn>com.google.guava:guava:16.0.1:jar:null:compile:5fa98cd1a63c99a44dd8d3b77e4762b066a5d0c5</urn>
@@ -181,6 +181,7 @@
                                         <urn>org.apache.maven.plugins:maven-enforcer-plugin:1.2:maven-plugin:null:runtime:6b755a9a0d618f8f57c0b5c4a0737a012e710a46</urn>
                                         <urn>org.apache.maven.plugins:maven-install-plugin:2.5.1:maven-plugin:null:runtime:b6f5a4b621b9c26699c8deadb20fdc35ce568e35</urn>
                                         <urn>org.apache.maven.plugins:maven-jar-plugin:2.5:maven-plugin:null:runtime:344d667f5ec8b90d03d698d096a1147672fc522f</urn>
+                                        <urn>org.apache.maven.plugins:maven-javadoc-plugin:2.9.1:maven-plugin:null:runtime:95ea7abf00e37e08bd927bf7e448c1e7fe4c6cb9</urn>
                                         <urn>org.apache.maven.plugins:maven-resources-plugin:2.6:maven-plugin:null:runtime:dd093ff6a4b680eae7ae83b5ab04310249fc6590</urn>
                                         <urn>org.apache.maven.plugins:maven-shade-plugin:2.3:maven-plugin:null:runtime:d136adc7abccc9c12adcad6ae7a9bc51b2b7184b</urn>
                                         <urn>org.apache.maven.plugins:maven-site-plugin:3.3:maven-plugin:null:runtime:77ba1752b1ac4c4339d6f11554800960a56a4ae1</urn>
@@ -195,6 +196,8 @@
                                         <url>com.fasterxml.jackson.core:jackson-databind:2.4.2:jar:null:test:8e31266a272ad25ac4c089734d93e8d811652c1f</url>
                                         <url>com.fasterxml.jackson.core:jackson-core:2.4.2:jar:null:test:ceb72830d95c512b4b300a38f29febc85bdf6e4b</url>
                                         <url>com.fasterxml.jackson.core:jackson-annotations:2.4.2:jar:null:test:6bb52af09372d5064206d47d7887d41671f00f7d</url>
+                                        <urn>org.jacoco:jacoco-maven-plugin:0.7.2.201409121644:maven-plugin:null:runtime:b2cb310459d082db505fdfa66dbadd4d8bac8e34</urn>
+                                        <urn>org.eluder.coveralls:coveralls-maven-plugin:3.0.1:maven-plugin:null:runtime:3907ee5cf1e5c85af7bb90e486ce4c7b1408a552</urn>
                                         <!-- A check for the rules themselves -->
                                         <urn>uk.co.froot.maven.enforcer:digest-enforcer-rules:0.0.1:jar:null:runtime:16a9e04f3fe4bb143c42782d07d5faf65b32106f</urn>
                                     </urns>
@@ -243,6 +246,69 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- Code coverage plugin, generates coverage report to target/site/jacoco/
+                To skip coverage generation add -Djacoco.skip=true
+             -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.7.2.201409121644</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/Protos*.class</exclude> <!-- Exclude generated protobuf classes -->
+                        <exclude>org/bitcoinj/jni/*</exclude> <!-- Exclude JNI classes -->
+                        <exclude>org/bitcoin/*</exclude> <!-- Exclude native classes -->
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>pre-unit-test</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <destFile>${project.build.directory}/coverage-reports/jacoco.exec</destFile>
+                            <propertyName>surefireArgLine</propertyName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>post-unit-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <dataFile>${project.build.directory}/coverage-reports/jacoco.exec</dataFile>
+                            <outputDirectory>${project.reporting.outputDirectory}/jacoco</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-report</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Unit tests plugin, to skip runing test add -Dmaven.test.skip -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.12.4</version>
+                <configuration>
+                    <argLine>${surefireArgLine}</argLine> <!-- This is required for code coverage to work. -->
+                </configuration>
+            </plugin>
+
+            <!-- Coveralls is a online code coverage tool, you can track code coverage here: https://coveralls.io/r/bitcoinj/bitcoinj -->
+            <plugin>
+                <groupId>org.eluder.coveralls</groupId>
+                <artifactId>coveralls-maven-plugin</artifactId>
+                <version>3.0.1</version>
             </plugin>
 
             <!-- Create a bundled executable test jar that runs the regtester/pulltester.
@@ -383,19 +449,26 @@
             <artifactId>scrypt</artifactId>
             <version>1.4.0</version>
         </dependency>
-
-        <!-- Add in to test/use Postgres blockstore -->
-        <!--
+        <!-- Note this is an optional dependency: Postgres blockstore -->
+        <!-- To Test remove optional -->
         <dependency>
           <groupId>postgresql</groupId>
           <artifactId>postgresql</artifactId>
           <version>9.1-901.jdbc4</version>
+          <optional>true</optional>
         </dependency>
-        -->
+        <!-- Note this is an optional dependency: MySQL blockstore -->
+        <!-- To Test remove optional -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.33</version>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>com.dogecoin</groupId>
             <artifactId>orchid</artifactId>
-            <version>1.0</version>
+            <version>1.1</version>
         </dependency>
     </dependencies>
 

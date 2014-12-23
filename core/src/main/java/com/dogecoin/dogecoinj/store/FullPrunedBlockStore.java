@@ -16,10 +16,7 @@
 
 package com.dogecoin.dogecoinj.store;
 
-import com.dogecoin.dogecoinj.core.Sha256Hash;
-import com.dogecoin.dogecoinj.core.StoredBlock;
-import com.dogecoin.dogecoinj.core.StoredTransactionOutput;
-import com.dogecoin.dogecoinj.core.StoredUndoableBlock;
+import com.dogecoin.dogecoinj.core.*;
 
 /**
  * <p>An implementor of FullPrunedBlockStore saves StoredBlock objects to some storage mechanism.</p>
@@ -43,12 +40,12 @@ import com.dogecoin.dogecoinj.core.StoredUndoableBlock;
  * <p>A FullPrunedBlockStore contains a map of hashes to [Full]StoredBlock. The hash is the double digest of the
  * Bitcoin serialization of the block header, <b>not</b> the header with the extra data as well.</p>
  * 
- * <p>A FullPrunedBlockStore also contains a map of hash+index to StoredTransactionOutput.  Again, the hash is
+ * <p>A FullPrunedBlockStore also contains a map of hash+index to UTXO.  Again, the hash is
  * a standard Bitcoin double-SHA256 hash of the transaction.</p>
  *
  * <p>FullPrunedBlockStores are thread safe.</p>
  */
-public interface FullPrunedBlockStore extends BlockStore {
+public interface FullPrunedBlockStore extends BlockStore, UTXOProvider {
     /**
      * <p>Saves the given {@link StoredUndoableBlock} and {@link StoredBlock}. Calculates keys from the {@link StoredBlock}</p>
      * 
@@ -74,21 +71,21 @@ public interface FullPrunedBlockStore extends BlockStore {
     StoredUndoableBlock getUndoBlock(Sha256Hash hash) throws BlockStoreException;
     
     /**
-     * Gets a {@link StoredTransactionOutput} with the given hash and index, or null if none is found
+     * Gets a {@link com.dogecoin.dogecoinj.core.UTXO} with the given hash and index, or null if none is found
      */
-    StoredTransactionOutput getTransactionOutput(Sha256Hash hash, long index) throws BlockStoreException;
+    UTXO getTransactionOutput(Sha256Hash hash, long index) throws BlockStoreException;
     
     /**
-     * Adds a {@link StoredTransactionOutput} to the list of unspent TransactionOutputs
+     * Adds a {@link com.dogecoin.dogecoinj.core.UTXO} to the list of unspent TransactionOutputs
      */
-    void addUnspentTransactionOutput(StoredTransactionOutput out) throws BlockStoreException;
+    void addUnspentTransactionOutput(UTXO out) throws BlockStoreException;
     
     /**
-     * Removes a {@link StoredTransactionOutput} from the list of unspent TransactionOutputs
+     * Removes a {@link com.dogecoin.dogecoinj.core.UTXO} from the list of unspent TransactionOutputs
      * Note that the coinbase of the genesis block should NEVER be spendable and thus never in the list.
      * @throws BlockStoreException if there is an underlying storage issue, or out was not in the list.
      */
-    void removeUnspentTransactionOutput(StoredTransactionOutput out) throws BlockStoreException;
+    void removeUnspentTransactionOutput(UTXO out) throws BlockStoreException;
     
     /**
      * True if this store has any unspent outputs from a transaction with a hash equal to the first parameter
@@ -109,7 +106,7 @@ public interface FullPrunedBlockStore extends BlockStore {
      * before a call to commitDatabaseBatchWrite.
      * 
      * If chainHead has a greater height than the non-verified chain head (ie that set with
-     * {@link BlockStore.setChainHead}) the non-verified chain head should be set to the one set here.
+     * {@link BlockStore#setChainHead}) the non-verified chain head should be set to the one set here.
      * In this way a class using a FullPrunedBlockStore only in full-verification mode can ignore the regular
      * {@link BlockStore} functions implemented as a part of a FullPrunedBlockStore.
      */

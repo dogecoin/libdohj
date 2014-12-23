@@ -6,7 +6,7 @@ __author__ = "richard 'ragmondo' green"
 import sys
 
 # Change this to point to where you have a copy of the bitcoinj.jar
-sys.path.append(r"/path/to/bitcoinj-0.12-SNAPSHOT-bundled.jar")
+sys.path.append(r"/path/to/bitcoinj-core-0.12-bundled.jar")
 
 # This is the address to forward all payments to. Change this (unless you want to send me some testnet coins)
 my_address_text = "mzEjmna15T7DXj4HC9MBEG2UJzgFfEYtFo"
@@ -27,7 +27,7 @@ from com.google.common.util.concurrent import Futures
 
 import java.io.File
 
-import traceback,sys
+import sys
 
 def loud_exceptions(*args):
     def _trace(func):
@@ -35,11 +35,9 @@ def loud_exceptions(*args):
             try:
                 func(*args, **kwargs)
             except Exception, e:
-                traceback.print_exc()
                 print "** python exception ",e
                 raise
             except java.lang.Exception,e:
-                traceback.print_exc()
                 print "** java exception",e
                 raise
         return wrapper
@@ -53,7 +51,6 @@ def loud_exceptions(*args):
 def forwardCoins(tx,w,pg,addr):
     v = tx.getValueSentToMe(w)
     amountToSend = v.subtract(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE)
-   # v_bigint = java.math.BigInteger(str(v))
     sr = w.sendCoins(pg, addr, amountToSend)
 
 class SenderListener(AbstractWalletEventListener):
@@ -76,7 +73,7 @@ class SenderListener(AbstractWalletEventListener):
         Futures.addCallback(tx.getConfidence().getDepthFuture(confirm_wait), myFutureCallback())
 
 if __name__ == "__main__":
-    params = com.google.bitcoin.params.TestNet3Params.get()
+    params = org.bitcoinj.params.TestNet3Params.get()
     my_address = Address(params,my_address_text)
     filePrefix = "forwarding-service-testnet"
     f = java.io.File(".")

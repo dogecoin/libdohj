@@ -35,8 +35,16 @@ import static com.google.common.base.Preconditions.checkState;
  * deterministic wallet child key generation algorithm.
  */
 public final class HDKeyDerivation {
+    static {
+        // Init proper random number generator, as some old Android installations have bugs that make it unsecure.
+        if (Utils.isAndroidRuntime())
+            new LinuxSecureRandom();
+
+        RAND_INT = new BigInteger(256, new SecureRandom());
+    }
+
     // Some arbitrary random number. Doesn't matter what it is.
-    private static final BigInteger RAND_INT = new BigInteger(256, new SecureRandom());
+    private static final BigInteger RAND_INT;
 
     private HDKeyDerivation() { }
 
@@ -86,12 +94,16 @@ public final class HDKeyDerivation {
     }
 
     public static DeterministicKey createMasterPubKeyFromBytes(byte[] pubKeyBytes, byte[] chainCode) {
-        return new DeterministicKey(ImmutableList.<ChildNumber>of(), chainCode, ECKey.CURVE.getCurve().decodePoint(pubKeyBytes), null, null);
+        return new DeterministicKey(ImmutableList.<ChildNumber>of(), chainCode, new LazyECPoint(ECKey.CURVE.getCurve(), pubKeyBytes), null, null);
     }
 
     /**
-     * Derives a key given the "extended" child number, ie. with the 0x80000000 bit specifying whether to use hardened
-     * derivation or not.
+     * Derives a key given the "extended" child number, ie. the 0x80000000 bit of the value that you
+     * pass for <code>childNumber</code> will determine whether to use hardened derivation or not.
+     * Consider whether your code would benefit from the clarity of the equivalent, but explicit, form
+     * of this method that takes a <code>ChildNumber</code> rather than an <code>int</code>, for example:
+     * <code>deriveChildKey(parent, new ChildNumber(childNumber, true))</code>
+     * where the value of the hardened bit of <code>childNumber</code> is zero.
      */
     public static DeterministicKey deriveChildKey(DeterministicKey parent, int childNumber) {
         return deriveChildKey(parent, new ChildNumber(childNumber));
@@ -126,7 +138,7 @@ public final class HDKeyDerivation {
             return new DeterministicKey(
                     HDUtils.append(parent.getPath(), childNumber),
                     rawKey.chainCode,
-                    ECKey.CURVE.getCurve().decodePoint(rawKey.keyBytes),   // c'tor will compress
+                    new LazyECPoint(ECKey.CURVE.getCurve(), rawKey.keyBytes),
                     null,
                     parent);
         } else {

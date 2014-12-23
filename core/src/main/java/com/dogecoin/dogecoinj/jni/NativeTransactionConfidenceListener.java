@@ -16,6 +16,7 @@
 
 package com.dogecoin.dogecoinj.jni;
 
+import com.dogecoin.dogecoinj.core.Sha256Hash;
 import com.dogecoin.dogecoinj.core.Transaction;
 import com.dogecoin.dogecoinj.core.TransactionConfidence;
 
@@ -28,5 +29,5 @@ public class NativeTransactionConfidenceListener implements TransactionConfidenc
     public long ptr;
 
     @Override
-    public native void onConfidenceChanged(Transaction tx, ChangeReason reason);
+    public native void onConfidenceChanged(TransactionConfidence confidence, ChangeReason reason);
 }

@@ -93,11 +93,10 @@ public class ForwardingService {
                 // to be double spent, no harm done. Wallet.allowSpendingUnconfirmedTransactions() would have to
                 // be called in onSetupCompleted() above. But we don't do that here to demonstrate the more common
                 // case of waiting for a block.
-                Futures.addCallback(tx.getConfidence().getDepthFuture(1), new FutureCallback<Transaction>() {
+                Futures.addCallback(tx.getConfidence().getDepthFuture(1), new FutureCallback<TransactionConfidence>() {
                     @Override
-                    public void onSuccess(Transaction result) {
-                        // "result" here is the same as "tx" above, but we use it anyway for clarity.
-                        forwardCoins(result);
+                    public void onSuccess(TransactionConfidence result) {
+                        forwardCoins(tx);
                     }
 
                     @Override
@@ -137,11 +136,8 @@ public class ForwardingService {
                     System.out.println("Sent coins onwards! Transaction hash is " + sendResult.tx.getHashAsString());
                 }
             }, MoreExecutors.sameThreadExecutor());
-        } catch (KeyCrypterException e) {
+        } catch (KeyCrypterException | InsufficientMoneyException e) {
             // We don't use encrypted wallets in this example - can never happen.
-            throw new RuntimeException(e);
-        } catch (InsufficientMoneyException e) {
-            // This should never happen - we're only trying to forward what we received!
             throw new RuntimeException(e);
         }
     }

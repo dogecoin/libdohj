@@ -16,6 +16,7 @@
 
 package com.dogecoin.dogecoinj.store;
 
+import com.dogecoin.dogecoinj.core.NetworkParameters;
 import com.dogecoin.dogecoinj.core.Sha256Hash;
 import com.dogecoin.dogecoinj.core.StoredBlock;
 
@@ -58,4 +59,10 @@ public interface BlockStore {
     
     /** Closes the store. */
     void close() throws BlockStoreException;
+
+    /**
+     * Get the {@link com.dogecoin.dogecoinj.core.NetworkParameters} of this store.
+     * @return The network params.
+     */
+    NetworkParameters getParams();
 }

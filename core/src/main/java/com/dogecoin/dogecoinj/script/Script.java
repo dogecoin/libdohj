@@ -51,6 +51,15 @@ import static com.google.common.base.Preconditions.*;
  */
 public class Script {
 
+    /** Enumeration to encapsulate the type of this script. */
+    public enum ScriptType {
+        // Do NOT change the ordering of the following definitions because their ordinals are stored in databases.
+        NO_TYPE,
+        P2PKH,
+        PUB_KEY,
+        P2SH
+    };
+
     /** Flags to pass to {@link Script#correctlySpends(Transaction, long, Script, Set)}. */
     public enum VerifyFlag {
         P2SH, // Enable BIP16-style subscript evaluation.
@@ -243,10 +252,16 @@ public class Script {
     }
 
     /**
-     * If a program matches the standard template DUP HASH160 <pubkey hash> EQUALVERIFY CHECKSIG
-     * then this function retrieves the third element, otherwise it throws a ScriptException.<p>
+     * <p>If a program matches the standard template DUP HASH160 &lt;pubkey hash&gt; EQUALVERIFY CHECKSIG
+     * then this function retrieves the third element.
+     * In this case, this is useful for fetching the destination address of a transaction.</p>
+     * 
+     * <p>If a program matches the standard template HASH160 &lt;script hash&gt; EQUAL
+     * then this function retrieves the second element.
+     * In this case, this is useful for fetching the hash of the redeem script of a transaction.</p>
+     * 
+     * <p>Otherwise it throws a ScriptException.</p>
      *
-     * This is useful for fetching the destination address of a transaction.
      */
     public byte[] getPubKeyHash() throws ScriptException {
         if (isSentToAddress())
@@ -723,6 +738,10 @@ public class Script {
         if (chunk.length > 4)
             throw new ScriptException("Script attempted to use an integer larger than 4 bytes");
         return Utils.decodeMPI(Utils.reverseBytes(chunk), false);
+    }
+
+    public boolean isOpReturn() {
+        return chunks.size() == 2 && chunks.get(0).equalsOpCode(OP_RETURN);
     }
 
     /**
@@ -1446,6 +1465,22 @@ public class Script {
         if (program != null)
             return program;
         return getProgram();
+    }
+
+    /**
+     * Get the {@link com.dogecoin.dogecoinj.script.Script.ScriptType}.
+     * @return The script type.
+     */
+    public ScriptType getScriptType() {
+        ScriptType type = ScriptType.NO_TYPE;
+        if (isSentToAddress()) {
+            type = ScriptType.P2PKH;
+        } else if (isSentToRawPubKey()) {
+            type = ScriptType.PUB_KEY;
+        } else if (isPayToScriptHash()) {
+            type = ScriptType.P2SH;
+        }
+        return type;
     }
 
     @Override
