@@ -260,8 +260,9 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
     public Wallet(NetworkParameters params, KeyChainGroup keyChainGroup) {
         this.params = checkNotNull(params);
         this.keychain = checkNotNull(keyChainGroup);
+/*      This causes the wallet to try and mine a block. Remove it for now
         if (params == UnitTestParams.get())
-            this.keychain.setLookaheadSize(5);  // Cut down excess computation for unit tests.
+            this.keychain.setLookaheadSize(5);  // Cut down excess computation for unit tests.*/
         // If this keychain was created fresh just now (new wallet), make HD so a backup can be made immediately
         // without having to call current/freshReceiveKey. If there are already keys in the chain of any kind then
         // we're probably being deserialized so leave things alone: the API user can upgrade later.
@@ -3307,8 +3308,9 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
      */
     public Transaction createSend(Address address, Coin value) throws InsufficientMoneyException {
         SendRequest req = SendRequest.to(address, value);
+        /*      This causes the wallet to try and mine a block. Remove it for now
         if (params == UnitTestParams.get())
-            req.shuffleOutputs = false;
+            req.shuffleOutputs = false;*/
         completeTx(req);
         return req.tx;
     }
