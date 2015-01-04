@@ -18,12 +18,15 @@
 package com.dogecoin.dogecoinj.wallet;
 
 import com.dogecoin.dogecoinj.core.Coin;
+import com.dogecoin.dogecoinj.core.ECKey;
+import com.dogecoin.dogecoinj.core.ECKey.ECDSASignature;
 import com.dogecoin.dogecoinj.core.NetworkParameters;
 import com.dogecoin.dogecoinj.core.Transaction;
 import com.dogecoin.dogecoinj.core.TransactionConfidence;
 import com.dogecoin.dogecoinj.core.TransactionInput;
 import com.dogecoin.dogecoinj.core.TransactionOutput;
 import com.dogecoin.dogecoinj.core.Wallet;
+import com.dogecoin.dogecoinj.crypto.TransactionSignature;
 import com.dogecoin.dogecoinj.script.ScriptChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +54,7 @@ public class DefaultRiskAnalysis implements RiskAnalysis {
 
     protected final Transaction tx;
     protected final List<Transaction> dependencies;
-    protected final Wallet wallet;
+    protected final @Nullable Wallet wallet;
 
     private Transaction nonStandard;
     protected Transaction nonFinal;
@@ -69,16 +72,19 @@ public class DefaultRiskAnalysis implements RiskAnalysis {
         analyzed = true;
 
         Result result = analyzeIsFinal();
-        if (result != Result.OK)
+        if (result != null && result != Result.OK)
             return result;
 
         return analyzeIsStandard();
     }
 
-    private Result analyzeIsFinal() {
+    private @Nullable Result analyzeIsFinal() {
         // Transactions we create ourselves are, by definition, not at risk of double spending against us.
         if (tx.getConfidence().getSource() == TransactionConfidence.Source.SELF)
             return Result.OK;
+
+        if (wallet == null)
+            return null;
 
         final int height = wallet.getLastBlockSeenHeight();
         final long time = wallet.getLastBlockSeenTimeSecs();
@@ -108,7 +114,8 @@ public class DefaultRiskAnalysis implements RiskAnalysis {
         VERSION,
         DUST,
         SHORTEST_POSSIBLE_PUSHDATA,
-        NONEMPTY_STACK  // Not yet implemented (for post 0.12)
+        NONEMPTY_STACK, // Not yet implemented (for post 0.12)
+        SIGNATURE_CANONICAL_ENCODING
     }
 
     /**
@@ -165,6 +172,19 @@ public class DefaultRiskAnalysis implements RiskAnalysis {
         for (ScriptChunk chunk : input.getScriptSig().getChunks()) {
             if (chunk.data != null && !chunk.isShortestPossiblePushData())
                 return RuleViolation.SHORTEST_POSSIBLE_PUSHDATA;
+            if (chunk.isPushData()) {
+                ECDSASignature signature;
+                try {
+                    signature = ECKey.ECDSASignature.decodeFromDER(chunk.data);
+                } catch (RuntimeException x) {
+                    // Doesn't look like a signature.
+                    signature = null;
+                }
+                if (signature != null) {
+                    if (!TransactionSignature.isEncodingCanonical(chunk.data))
+                        return RuleViolation.SIGNATURE_CANONICAL_ENCODING;
+                }
+            }
         }
         return RuleViolation.NONE;
     }
@@ -172,7 +192,7 @@ public class DefaultRiskAnalysis implements RiskAnalysis {
     private Result analyzeIsStandard() {
         // The IsStandard rules don't apply on testnet, because they're just a safety mechanism and we don't want to
         // crush innovation with valueless test coins.
-        if (!wallet.getNetworkParameters().getId().equals(NetworkParameters.ID_MAINNET))
+        if (wallet != null && !wallet.getNetworkParameters().getId().equals(NetworkParameters.ID_MAINNET))
             return Result.OK;
 
         RuleViolation ruleViolation = isStandard(tx);

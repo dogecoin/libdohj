@@ -17,12 +17,15 @@
 
 package com.dogecoin.dogecoinj.wallet;
 
-import com.google.common.collect.Lists;
+import java.util.Arrays;
 import com.dogecoin.dogecoinj.core.*;
+import com.dogecoin.dogecoinj.crypto.TransactionSignature;
 import com.dogecoin.dogecoinj.params.MainNetParams;
+import com.dogecoin.dogecoinj.script.Script;
 import com.dogecoin.dogecoinj.script.ScriptBuilder;
 import com.dogecoin.dogecoinj.script.ScriptChunk;
 import com.google.common.collect.ImmutableList;
+import com.dogecoin.dogecoinj.wallet.DefaultRiskAnalysis.RuleViolation;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -158,6 +161,22 @@ public class DefaultRiskAnalysisTest {
         assertEquals(DefaultRiskAnalysis.RuleViolation.NONE, DefaultRiskAnalysis.isStandard(tx));
         tx.addOutput(new TransactionOutput(params, null, COIN, nonStandardScript));
         assertEquals(DefaultRiskAnalysis.RuleViolation.SHORTEST_POSSIBLE_PUSHDATA, DefaultRiskAnalysis.isStandard(tx));
+    }
+
+    @Test
+    public void canonicalSignature() {
+        TransactionSignature sig = TransactionSignature.dummy();
+        Script scriptOk = ScriptBuilder.createInputScript(sig);
+        assertEquals(RuleViolation.NONE,
+                DefaultRiskAnalysis.isInputStandard(new TransactionInput(params, null, scriptOk.getProgram())));
+
+        byte[] sigBytes = sig.encodeToBitcoin();
+        // Appending a zero byte makes the signature uncanonical without violating DER encoding.
+        Script scriptUncanonicalEncoding = new ScriptBuilder().data(Arrays.copyOf(sigBytes, sigBytes.length + 1))
+                .build();
+        assertEquals(RuleViolation.SIGNATURE_CANONICAL_ENCODING,
+                DefaultRiskAnalysis.isInputStandard(new TransactionInput(params, null, scriptUncanonicalEncoding
+                        .getProgram())));
     }
 
     @Test
