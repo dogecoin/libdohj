@@ -39,8 +39,8 @@ public class MainNetParams extends NetworkParameters {
         acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
         port = 22556;
         packetMagic = 0xc0c0c0c0;
-        bip32HeaderPub = 0x0488B21E; //The 4 byte header that serializes in base58 to "xpub".
-        bip32HeaderPriv = 0x0488ADE4; //The 4 byte header that serializes in base58 to "xprv"
+        bip32HeaderPub = 0x0488C42E; //The 4 byte header that serializes in base58 to "xpub". (?)
+        bip32HeaderPriv = 0x0488E1F4; //The 4 byte header that serializes in base58 to "xprv" (?)
         genesisBlock.setDifficultyTarget(0x1e0ffff0L);
         genesisBlock.setTime(1386325540L);
         genesisBlock.setNonce(99943L);
@@ -73,6 +73,10 @@ public class MainNetParams extends NetworkParameters {
         checkpoints.put(299742, new Sha256Hash("1cc89c0c8a58046bf0222fe131c099852bd9af25a80e07922918ef5fb39d6742"));
         checkpoints.put(323141, new Sha256Hash("60c9f919f9b271add6ef5671e9538bad296d79f7fdc6487ba702bf2ba131d31d"));
         checkpoints.put(339202, new Sha256Hash("8c29048df5ae9df38a67ea9470fdd404d281a3a5c6f33080cd5bf14aa496ab03"));
+        checkpoints.put(350000, new Sha256Hash("2bdcba23a47049e69c4fec4c425462e30f3d21d25223bde0ed36be4ea59a7075"));
+        checkpoints.put(370005, new Sha256Hash("7be5af2c5bdcb79047dcd691ef613b82d4f1c20835677daed936de37a4782e15"));
+        checkpoints.put(371337, new Sha256Hash("60323982f9c5ff1b5a954eac9dc1269352835f47c2c5222691d80f0d50dcf053"));
+        checkpoints.put(400002, new Sha256Hash("a5021d69a83f39aef10f3f24f932068d6ff322c654d20562def3fac5703ce3aa"));
 
         dnsSeeds = new String[] {
                 "seed.dogecoin.com",
