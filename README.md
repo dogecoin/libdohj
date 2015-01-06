@@ -1,5 +1,4 @@
-### !!!THIS BRANCH IS WIP!!!
-### !!!THIS BRANCH IS WIP!!!
+### This branch is the latest version with name changes. The old branch is still up under old-master!
 
 ### Welcome to dogecoinj
 
