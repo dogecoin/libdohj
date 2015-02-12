@@ -1,10 +1,9 @@
 package wallettemplate;
 
+import com.google.common.util.concurrent.*;
 import com.dogecoin.dogecoinj.core.NetworkParameters;
 import com.dogecoin.dogecoinj.kits.WalletAppKit;
-import com.dogecoin.dogecoinj.params.MainNetParams;
-import com.dogecoin.dogecoinj.params.RegTestParams;
-import com.dogecoin.dogecoinj.params.TestNet3Params;
+import com.dogecoin.dogecoinj.params.*;
 import com.dogecoin.dogecoinj.utils.BriefLogFormatter;
 import com.dogecoin.dogecoinj.utils.Threading;
 import com.dogecoin.dogecoinj.wallet.DeterministicSeed;
@@ -30,7 +29,7 @@ import static wallettemplate.utils.GuiUtils.*;
 public class Main extends Application {
     public static String APP_NAME = "WalletTemplate";
 
-    public static NetworkParameters params = TestNet3Params.get();
+    public static NetworkParameters params = MainNetParams.get();
     public static WalletAppKit bitcoin;
     public static Main instance;
 
@@ -96,20 +95,23 @@ public class Main extends Application {
 
         mainWindow.show();
 
+        bitcoin.addListener(new Service.Listener() {
+            @Override
+            public void failed(Service.State from, Throwable failure) {
+                GuiUtils.crashAlert(failure);
+            }
+        }, Platform::runLater);
         bitcoin.startAsync();
     }
 
     public void setupWalletKit(@Nullable DeterministicSeed seed) {
         // If seed is non-null it means we are restoring from backup.
-        bitcoin = new WalletAppKit(params, new File("."), APP_NAME) {
+        bitcoin = new WalletAppKit(params, new File("."), APP_NAME + "-" + params.getPaymentProtocolId()) {
             @Override
             protected void onSetupCompleted() {
                 // Don't make the user wait for confirmations for now, as the intention is they're sending it
                 // their own money!
                 bitcoin.wallet().allowSpendingUnconfirmedTransactions();
-                if (params != RegTestParams.get())
-                    bitcoin.peerGroup().setMaxConnections(11);
-                bitcoin.peerGroup().setBloomFilterFalsePositiveRate(0.00001);
                 Platform.runLater(controller::onBitcoinSetup);
             }
         };

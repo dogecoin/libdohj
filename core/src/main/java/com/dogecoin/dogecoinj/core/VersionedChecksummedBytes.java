@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 import com.google.common.base.Objects;
+import com.google.common.primitives.UnsignedBytes;
 
 /**
  * <p>In Bitcoin the following format is often used to represent some type of key:</p>
@@ -31,7 +32,7 @@ import com.google.common.base.Objects;
  * <p>and the result is then Base58 encoded. This format is used for addresses, and private keys exported using the
  * dumpprivkey command.</p>
  */
-public class VersionedChecksummedBytes implements Serializable {
+public class VersionedChecksummedBytes implements Serializable, Cloneable, Comparable<VersionedChecksummedBytes> {
     protected final int version;
     protected byte[] bytes;
 
@@ -77,6 +78,34 @@ public class VersionedChecksummedBytes implements Serializable {
         VersionedChecksummedBytes other = (VersionedChecksummedBytes) o;
         return this.version == other.version
                 && Arrays.equals(this.bytes, other.bytes);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * This implementation narrows the return type to <code>VersionedChecksummedBytes</code>
+     * and allows subclasses to throw <code>CloneNotSupportedException</code> even though it
+     * is never thrown by this implementation.
+     */
+    @Override
+    public VersionedChecksummedBytes clone() throws CloneNotSupportedException {
+        return (VersionedChecksummedBytes) super.clone();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * This implementation uses an optimized Google Guava method to compare <code>bytes</code>.
+     */
+    @Override
+    public int compareTo(VersionedChecksummedBytes o) {
+        int versionCompare = Integer.valueOf(this.version).compareTo(Integer.valueOf(o.version));  // JDK 6 way
+        if (versionCompare == 0) {
+            // Would there be a performance benefit to caching the comparator?
+            return UnsignedBytes.lexicographicalComparator().compare(this.bytes, o.bytes);
+        } else {
+            return versionCompare;
+        }
     }
 
     /**

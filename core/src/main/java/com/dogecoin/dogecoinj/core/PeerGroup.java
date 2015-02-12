@@ -19,6 +19,7 @@ package com.dogecoin.dogecoinj.core;
 
 import com.dogecoin.dogecoinj.params.MainNetParams;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -70,17 +71,22 @@ import static com.google.common.base.Preconditions.checkState;
  * <p>The PeerGroup can broadcast a transaction to the currently connected set of peers.  It can
  * also handle download of the blockchain from peers, restarting the process when peers die.</p>
  *
- * <p>PeerGroup implements the {@link Service} interface. This means before it will do anything,
- * you must call the {@link com.google.common.util.concurrent.Service#start()} method (which returns
- * a future) or {@link com.google.common.util.concurrent.Service#startAndWait()} method, which will block
- * until peer discovery is completed and some outbound connections have been initiated (it will return
- * before handshaking is done, however). You should call {@link com.google.common.util.concurrent.Service#stop()}
- * when finished. Note that not all methods of PeerGroup are safe to call from a UI thread as some may do
- * network IO, but starting and stopping the service should be fine.</p>
+ * <p>A PeerGroup won't do anything until you call the {@link PeerGroup#start()} method 
+ * which will block until peer discovery is completed and some outbound connections 
+ * have been initiated (it will return before handshaking is done, however). 
+ * You should call {@link PeerGroup#stop()} when finished. Note that not all methods
+ * of PeerGroup are safe to call from a UI thread as some may do network IO, 
+ * but starting and stopping the service should be fine.</p>
  */
 public class PeerGroup implements TransactionBroadcaster {
     private static final Logger log = LoggerFactory.getLogger(PeerGroup.class);
-    private static final int DEFAULT_CONNECTIONS = 4;
+    /**
+     * The default number of connections to the p2p network the library will try to build. This is set to 12 empirically.
+     * It used to be 4, but because we divide the connection pool in two for broadcasting transactions, that meant we
+     * were only sending transactions to two peers and sometimes this wasn't reliable enough: transactions wouldn't
+     * get through.
+     */
+    public static final int DEFAULT_CONNECTIONS = 12;
     private static final int TOR_TIMEOUT_SECONDS = 60;
     private int vMaxPeersToDiscoverCount = 100;
 
@@ -501,7 +507,8 @@ public class PeerGroup implements TransactionBroadcaster {
 
     private void triggerConnections() {
         // Run on a background thread due to the need to potentially retry and back off in the background.
-        executor.execute(triggerConnectionsJob);
+        if (!executor.isShutdown())
+            executor.execute(triggerConnectionsJob);
     }
 
     /** The maximum number of connections that we will create to peers. */
@@ -885,6 +892,7 @@ public class PeerGroup implements TransactionBroadcaster {
                         torClient.stop();
                     }
                     vRunning = false;
+                    log.info("Stopped.");
                 } catch (Throwable e) {
                     log.error("Exception when shutting down", e);  // The executor swallows exceptions :(
                 }
@@ -898,6 +906,7 @@ public class PeerGroup implements TransactionBroadcaster {
     public void stop() {
         try {
             stopAsync();
+            log.info("Awaiting PeerGroup shutdown ...");
             executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -1030,7 +1039,7 @@ public class PeerGroup implements TransactionBroadcaster {
                 return inFlightRecalculations.get(mode);
             inFlightRecalculations.put(mode, future);
         }
-        executor.execute(new Runnable() {
+        Runnable command = new Runnable() {
             @Override
             public void run() {
                 try {
@@ -1080,7 +1089,12 @@ public class PeerGroup implements TransactionBroadcaster {
                 }
                 future.set(result.filter);
             }
-        });
+        };
+        try {
+            executor.execute(command);
+        } catch (RejectedExecutionException e) {
+            // Can happen during shutdown.
+        }
         return future;
     }
     
@@ -1168,10 +1182,15 @@ public class PeerGroup implements TransactionBroadcaster {
         pendingPeers.add(peer);
 
         try {
-            channels.openConnection(address.toSocketAddress(), peer);
-        } catch (Exception e) {
-            log.warn("Failed to connect to " + address + ": " + e.getMessage());
-            handlePeerDeath(peer, e);
+            log.info("Attempting connection to {}     ({} connected, {} pending, {} max)", address,
+                    peers.size(), pendingPeers.size(), maxConnections);
+            ListenableFuture<SocketAddress> future = channels.openConnection(address.toSocketAddress(), peer);
+            if (future.isDone())
+                Uninterruptibles.getUninterruptibly(future);
+        } catch (ExecutionException e) {
+            Throwable cause = Throwables.getRootCause(e);
+            log.warn("Failed to connect to " + address + ": " + cause.getMessage());
+            handlePeerDeath(peer, cause);
             return null;
         }
         peer.setSocketTimeout(connectTimeoutMillis);
@@ -1244,10 +1263,10 @@ public class PeerGroup implements TransactionBroadcaster {
             backoffMap.get(peer.getAddress()).trackSuccess();
 
             // Sets up the newly connected peer so it can do everything it needs to.
-            log.info("{}: New peer", peer);
             pendingPeers.remove(peer);
             peers.add(peer);
             newSize = peers.size();
+            log.info("{}: New peer      ({} connected, {} pending, {} max)", peer, newSize, pendingPeers.size(), maxConnections);
             // Give the peer a filter that can be used to probabilistically drop transactions that
             // aren't relevant to our wallet. We may still receive some false positives, which is
             // OK because it helps improve wallet privacy. Old nodes will just ignore the message.
@@ -1385,7 +1404,7 @@ public class PeerGroup implements TransactionBroadcaster {
         }
     }
 
-    protected void handlePeerDeath(final Peer peer, @Nullable Exception exception) {
+    protected void handlePeerDeath(final Peer peer, @Nullable Throwable exception) {
         // Peer deaths can occur during startup if a connect attempt after peer discovery aborts immediately.
         if (!isRunning()) return;
 
@@ -1398,7 +1417,7 @@ public class PeerGroup implements TransactionBroadcaster {
 
             PeerAddress address = peer.getAddress();
 
-            log.info("{}: Peer died", address);
+            log.info("{}: Peer died      ({} connected, {} pending, {} max)", address, peers.size(), pendingPeers.size(), maxConnections);
             if (peer == downloadPeer) {
                 log.info("Download peer died. Picking a new one.");
                 setDownloadPeer(null);
@@ -1416,11 +1435,12 @@ public class PeerGroup implements TransactionBroadcaster {
 
             groupBackoff.trackFailure();
 
-            if (!(exception instanceof NoRouteToHostException)) {
+            if (exception instanceof NoRouteToHostException) {
                 if (address.getAddr() instanceof Inet6Address && !ipv6Unreachable) {
                     ipv6Unreachable = true;
                     log.warn("IPv6 peer connect failed due to routing failure, ignoring IPv6 addresses from now on");
                 }
+            } else {
                 backoffMap.get(address).trackFailure();
                 // Put back on inactive list
                 inactives.offer(address);
@@ -1502,7 +1522,7 @@ public class PeerGroup implements TransactionBroadcaster {
     }
 
     /**
-     * Returns a mutable array list of peers that implement the given protocol version or better.
+     * Returns an array list of peers that implement the given protocol version or better.
      */
     public List<Peer> findPeersOfAtLeastVersion(long protocolVersion) {
         lock.lock();
@@ -1518,10 +1538,57 @@ public class PeerGroup implements TransactionBroadcaster {
     }
 
     /**
+     * Returns a future that is triggered when there are at least the requested number of connected peers that support
+     * the given protocol version or higher. To block immediately, just call get() on the result.
+     *
+     * @param numPeers How many peers to wait for.
+     * @param mask An integer representing a bit mask that will be ANDed with the peers advertised service masks.
+     * @return a future that will be triggered when the number of connected peers implementing protocolVersion or higher >= numPeers
+     */
+    public ListenableFuture<List<Peer>> waitForPeersWithServiceMask(final int numPeers, final int mask) {
+        lock.lock();
+        try {
+            List<Peer> foundPeers = findPeersWithServiceMask(mask);
+            if (foundPeers.size() >= numPeers)
+                return Futures.immediateFuture(foundPeers);
+            final SettableFuture<List<Peer>> future = SettableFuture.create();
+            addEventListener(new AbstractPeerEventListener() {
+                @Override
+                public void onPeerConnected(Peer peer, int peerCount) {
+                    final List<Peer> peers = findPeersWithServiceMask(mask);
+                    if (peers.size() >= numPeers) {
+                        future.set(peers);
+                        removeEventListener(this);
+                    }
+                }
+            });
+            return future;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Returns an array list of peers that match the requested service bit mask.
+     */
+    public List<Peer> findPeersWithServiceMask(int mask) {
+        lock.lock();
+        try {
+            ArrayList<Peer> results = new ArrayList<Peer>(peers.size());
+            for (Peer peer : peers)
+                if ((peer.getPeerVersionMessage().localServices & mask) == mask)
+                    results.add(peer);
+            return results;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
      * Returns the number of connections that are required before transactions will be broadcast. If there aren't
      * enough, {@link PeerGroup#broadcastTransaction(Transaction)} will wait until the minimum number is reached so
      * propagation across the network can be observed. If no value has been set using
-     * {@link PeerGroup#setMinBroadcastConnections(int)} a default of half of whatever
+     * {@link PeerGroup#setMinBroadcastConnections(int)} a default of 80% of whatever
      * {@link com.dogecoin.dogecoinj.core.PeerGroup#getMaxConnections()} returns is used.
      */
     public int getMinBroadcastConnections() {
@@ -1532,7 +1599,7 @@ public class PeerGroup implements TransactionBroadcaster {
                 if (max <= 1)
                     return max;
                 else
-                    return (int) Math.round(getMaxConnections() / 2.0);
+                    return (int) Math.round(getMaxConnections() * 0.8);
             }
             return minBroadcastConnections;
         } finally {
@@ -1609,9 +1676,8 @@ public class PeerGroup implements TransactionBroadcaster {
 
             @Override
             public void onFailure(Throwable throwable) {
-                // This can't happen with the current code, but just in case one day that changes ...
+                // This can happen if we get a reject message from a peer.
                 runningBroadcasts.remove(broadcast);
-                throw new RuntimeException(throwable);
             }
         });
         // Keep a reference to the TransactionBroadcast object. This is important because otherwise, the entire tree

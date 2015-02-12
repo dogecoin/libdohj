@@ -15,36 +15,27 @@
  * limitations under the License.
  */
 
-package com.dogecoin.dogecoinj.kits;
+package org.bitcoinj.kits;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.*;
 import com.google.common.util.concurrent.*;
-import com.subgraph.orchid.TorClient;
+import com.subgraph.orchid.*;
 import com.dogecoin.dogecoinj.core.*;
-import com.dogecoin.dogecoinj.net.discovery.DnsDiscovery;
-import com.dogecoin.dogecoinj.net.discovery.PeerDiscovery;
-import com.dogecoin.dogecoinj.protocols.channels.StoredPaymentChannelClientStates;
-import com.dogecoin.dogecoinj.protocols.channels.StoredPaymentChannelServerStates;
-import com.dogecoin.dogecoinj.store.BlockStoreException;
-import com.dogecoin.dogecoinj.store.SPVBlockStore;
-import com.dogecoin.dogecoinj.store.WalletProtobufSerializer;
-import com.dogecoin.dogecoinj.wallet.DeterministicSeed;
-import com.dogecoin.dogecoinj.wallet.KeyChainGroup;
-import com.dogecoin.dogecoinj.wallet.Protos;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.dogecoin.dogecoinj.net.discovery.*;
+import com.dogecoin.dogecoinj.params.*;
+import com.dogecoin.dogecoinj.protocols.channels.*;
+import com.dogecoin.dogecoinj.store.*;
+import com.dogecoin.dogecoinj.wallet.*;
+import org.slf4j.*;
 
-import javax.annotation.Nullable;
+import javax.annotation.*;
 import java.io.*;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.nio.channels.FileLock;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.net.*;
+import java.nio.channels.*;
+import java.util.*;
+import java.util.concurrent.*;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.*;
 
 /**
  * <p>Utility class that wraps the boilerplate needed to set up a new SPV bitcoinj app. Instantiate it with a directory
@@ -275,7 +266,7 @@ public class WalletAppKit extends AbstractIdleService {
                             log.info("Deleting the chain file in preparation from restore.");
                             vStore.close();
                             if (!chainFile.delete())
-                                throw new Exception("Failed to delete chain file in preparation for restore.");
+                                throw new IOException("Failed to delete chain file in preparation for restore.");
                             vStore = new SPVBlockStore(params, chainFile);
                         }
                     } else {
@@ -286,7 +277,7 @@ public class WalletAppKit extends AbstractIdleService {
                     log.info("Deleting the chain file in preparation from restore.");
                     vStore.close();
                     if (!chainFile.delete())
-                        throw new Exception("Failed to delete chain file in preparation for restore.");
+                        throw new IOException("Failed to delete chain file in preparation for restore.");
                     vStore = new SPVBlockStore(params, chainFile);
                 }
             }
@@ -301,7 +292,7 @@ public class WalletAppKit extends AbstractIdleService {
                 for (PeerAddress addr : peerAddresses) vPeerGroup.addAddress(addr);
                 vPeerGroup.setMaxConnections(peerAddresses.length);
                 peerAddresses = null;
-            } else {
+            } else if (params != RegTestParams.get()) {
                 vPeerGroup.addPeerDiscovery(discovery != null ? discovery : new DnsDiscovery(params));
             }
             vChain.addWallet(vWallet);

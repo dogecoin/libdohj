@@ -283,6 +283,14 @@ public class Peer extends PeerSocketHandler {
     }
 
     @Override
+    protected void timeoutOccurred() {
+        super.timeoutOccurred();
+        if (!connectionOpenFuture.isDone()) {
+            connectionClosed();  // Invoke the event handlers to tell listeners e.g. PeerGroup that we never managed to connect.
+        }
+    }
+
+    @Override
     public void connectionClosed() {
         for (final PeerListenerRegistration registration : eventListeners) {
             if (registration.callOnDisconnect)
@@ -414,9 +422,9 @@ public class Peer extends PeerSocketHandler {
                 future.set((UTXOsMessage)m);
             }
         } else if (m instanceof RejectMessage) {
-            log.error("Received Message {}", m);
+            log.error("{} {}: Received {}", this, getPeerVersionMessage().subVer, m);
         } else {
-            log.warn("Received unhandled message: {}", m);
+            log.warn("{}: Received unhandled message: {}", this, m);
         }
     }
 

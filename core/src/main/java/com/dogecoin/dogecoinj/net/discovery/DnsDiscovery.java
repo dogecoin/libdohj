@@ -17,14 +17,10 @@
 
 package com.dogecoin.dogecoinj.net.discovery;
 
-import com.dogecoin.dogecoinj.core.NetworkParameters;
-import com.google.common.collect.Lists;
-import com.dogecoin.dogecoinj.utils.DaemonThreadFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.dogecoin.dogecoinj.core.*;
+import com.dogecoin.dogecoinj.utils.*;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -39,12 +35,7 @@ import java.util.concurrent.*;
  * will return up to 30 random peers from the set of those returned within the timeout period. If you want more peers
  * to connect to, you need to discover them via other means (like addr broadcasts).</p>
  */
-public class DnsDiscovery implements PeerDiscovery {
-    private static final Logger log = LoggerFactory.getLogger(DnsDiscovery.class);
-
-    private final String[] dnsSeeds;
-    private final NetworkParameters netParams;
-
+public class DnsDiscovery extends MultiplexingDiscovery {
     /**
      * Supports finding peers through DNS A records. Community run DNS entry points will be used.
      *
@@ -58,65 +49,54 @@ public class DnsDiscovery implements PeerDiscovery {
      * Supports finding peers through DNS A records.
      *
      * @param dnsSeeds Host names to be examined for seed addresses.
-     * @param netParams Network parameters to be used for port information.
+     * @param params Network parameters to be used for port information.
      */
-    public DnsDiscovery(String[] dnsSeeds, NetworkParameters netParams) {
-        this.dnsSeeds = dnsSeeds;
-        this.netParams = netParams;
+    public DnsDiscovery(String[] dnsSeeds, NetworkParameters params) {
+        super(params, buildDiscoveries(params, dnsSeeds));
+    }
+
+    private static List<PeerDiscovery> buildDiscoveries(NetworkParameters params, String[] seeds) {
+        List<PeerDiscovery> discoveries = new ArrayList<PeerDiscovery>(seeds.length);
+        for (String seed : seeds)
+            discoveries.add(new DnsSeedDiscovery(params, seed));
+        return discoveries;
     }
 
     @Override
-    public InetSocketAddress[] getPeers(long timeoutValue, TimeUnit timeoutUnit) throws PeerDiscoveryException {
-        if (dnsSeeds == null || dnsSeeds.length == 0)
-            throw new PeerDiscoveryException("No DNS seeds configured; unable to find any peers");
+    protected ExecutorService createExecutor() {
+        // Attempted workaround for reported bugs on Linux in which gethostbyname does not appear to be properly
+        // thread safe and can cause segfaults on some libc versions.
+        if (System.getProperty("os.name").toLowerCase().contains("linux"))
+            return Executors.newSingleThreadExecutor(new DaemonThreadFactory());
+        else
+            return Executors.newFixedThreadPool(seeds.size(), new DaemonThreadFactory());
+    }
 
-        // Java doesn't have an async DNS API so we have to do all lookups in a thread pool, as sometimes seeds go
-        // hard down and it takes ages to give up and move on.
-        ExecutorService threadPool = Executors.newFixedThreadPool(dnsSeeds.length, new DaemonThreadFactory());
-        try {
-            List<Callable<InetAddress[]>> tasks = Lists.newArrayList();
-            for (final String seed : dnsSeeds) {
-                tasks.add(new Callable<InetAddress[]>() {
-                    @Override
-                    public InetAddress[] call() throws Exception {
-                        return InetAddress.getAllByName(seed);
-                    }
-                });
-            }
-            final List<Future<InetAddress[]>> futures = threadPool.invokeAll(tasks, timeoutValue, timeoutUnit);
-            ArrayList<InetSocketAddress> addrs = Lists.newArrayList();
-            for (int i = 0; i < futures.size(); i++) {
-                Future<InetAddress[]> future = futures.get(i);
-                if (future.isCancelled()) {
-                    log.warn("DNS seed {}: timed out", dnsSeeds[i]);
-                    continue;  // Timed out.
-                }
-                final InetAddress[] inetAddresses;
-                try {
-                    inetAddresses = future.get();
-                    log.info("DNS seed {}: got {} peers", dnsSeeds[i], inetAddresses.length);
-                } catch (ExecutionException e) {
-                    log.error("DNS seed {}: failed to look up: {}", dnsSeeds[i], e.getMessage());
-                    continue;
-                }
-                for (InetAddress addr : inetAddresses) {
-                    addrs.add(new InetSocketAddress(addr, netParams.getPort()));
-                }
-            }
-            if (addrs.size() == 0)
-                throw new PeerDiscoveryException("Unable to find any peers via DNS");
-            Collections.shuffle(addrs);
-            threadPool.shutdownNow();
-            return addrs.toArray(new InetSocketAddress[addrs.size()]);
-        } catch (InterruptedException e) {
-            throw new PeerDiscoveryException(e);
-        } finally {
-            threadPool.shutdown();
+    /** Implements discovery from a single DNS host. */
+    public static class DnsSeedDiscovery implements PeerDiscovery {
+        private final String hostname;
+        private final NetworkParameters params;
+
+        public DnsSeedDiscovery(NetworkParameters params, String hostname) {
+            this.hostname = hostname;
+            this.params = params;
         }
-    }
 
-    /** We don't have a way to abort a DNS lookup, so this does nothing */
-    @Override
-    public void shutdown() {
+        @Override
+        public InetSocketAddress[] getPeers(long timeoutValue, TimeUnit timeoutUnit) throws PeerDiscoveryException {
+            try {
+                InetAddress[] response = InetAddress.getAllByName(hostname);
+                InetSocketAddress[] result = new InetSocketAddress[response.length];
+                for (int i = 0; i < response.length; i++)
+                    result[i] = new InetSocketAddress(response[i], params.getPort());
+                return result;
+            } catch (UnknownHostException e) {
+                throw new PeerDiscoveryException(e);
+            }
+        }
+
+        @Override
+        public void shutdown() {
+        }
     }
 }
