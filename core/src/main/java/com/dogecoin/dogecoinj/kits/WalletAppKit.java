@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.bitcoinj.kits;
+package com.dogecoin.dogecoinj.kits;
 
 import com.google.common.collect.*;
 import com.google.common.util.concurrent.*;
