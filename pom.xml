@@ -1,17 +1,14 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.dogecoin</groupId>
-  <artifactId>dogecoinj-parent</artifactId>
+  <groupId>org.altcoinj</groupId>
+  <artifactId>altcoinj-parent</artifactId>
   <version>0.13-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
     <module>core</module>
-    <module>examples</module>
-    <module>tools</module>
-    <module>wallettemplate</module>
   </modules>
 
   <parent>
@@ -21,14 +18,14 @@
   </parent>
 
   <scm>
-    <connection>scm:git:https://github.com/langerhans/dogecoinj-new</connection>
-    <developerConnection>scm:git:https://github.com/langerhans/dogecoinj-new</developerConnection>
-    <url>scm:git:https://github.com/langerhans/dogecoinj-new</url>
+    <connection>scm:git:https://github.com/rnicoll/altcoinj</connection>
+    <developerConnection>scm:git:https://github.com/rnicoll/altcoinj</developerConnection>
+    <url>scm:git:https://github.com/rnicoll/altcoinj</url>
   </scm>
 
-  <name>dogecoinj Parent</name>
-  <description>Provides the common configuration for the DogecoinJ modules</description>
-  <url>https://github.com/langerhans/dogecoinj-new/</url>
+  <name>altcoinj Parent</name>
+  <description>Provides the common configuration for the AltcoinJ modules</description>
+  <url>https://github.com/rnicoll/altcoinj/</url>
 
   <licenses>
     <license>
@@ -41,28 +38,8 @@
 
   <issueManagement>
     <system>GitHub</system>
-    <url>https://github.com/langerhans/dogecoinj-new/issues</url>
+    <url>https://github.com/rnicoll/altcoinj/issues</url>
   </issueManagement>
-
-  <!--
-  <mailingLists>
-    <mailingList>
-      <name>bitcoinj Google Group</name>
-      <post>https://groups.google.com/forum/#!forum/bitcoinj</post>
-    </mailingList>
-  </mailingLists>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-    <repository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
-  -->
 
   <!-- Common build plugin configuration -->
   <build>
@@ -84,9 +61,9 @@
         <version>1.6.3</version>
         <extensions>true</extensions>
         <configuration>
-            <serverId>ossrh</serverId>
-            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+          <serverId>ossrh</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
         </configuration>
       </plugin>
     </plugins>
@@ -148,23 +125,22 @@
       </plugins>
     </pluginManagement>
   </build>
-
   <dependencies>
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>1.7.6</version>
-      </dependency>
-      <!-- dogecoinj consumers are expected to provide their own SLF4J adapters
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.6</version>
+    </dependency>
+    <!-- altcoinj consumers are expected to provide their own SLF4J adapters
     such as logback, slf4j-log4j12, slf4j-jcl and so on
     see http://www.slf4j.org/faq.html -->
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-jdk14</artifactId>
-        <version>1.7.6</version>
-        <scope>runtime</scope>
-        <optional>true</optional>
-      </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>1.7.6</version>
+      <scope>runtime</scope>
+      <optional>true</optional>
+    </dependency>
   </dependencies>
 
   <properties>
@@ -193,55 +169,52 @@
         </plugins>
       </build>
     </profile>
-
-      <profile>
-          <id>release</id>
-          <build>
-              <plugins>
-                  <plugin>
-                      <groupId>org.apache.maven.plugins</groupId>
-                      <artifactId>maven-source-plugin</artifactId>
-                      <executions>
-                          <execution>
-                              <id>attach-sources</id>
-                              <phase>verify</phase>
-                              <goals>
-                                  <goal>jar-no-fork</goal>
-                              </goals>
-                          </execution>
-                      </executions>
-                  </plugin>
-
-                  <plugin>
-                      <groupId>org.apache.maven.plugins</groupId>
-                      <artifactId>maven-javadoc-plugin</artifactId>
-                      <executions>
-                          <execution>
-                              <id>attach-javadocs</id>
-                              <goals>
-                                  <goal>jar</goal>
-                              </goals>
-                          </execution>
-                      </executions>
-                  </plugin>
-
-                  <plugin>
-                      <groupId>org.apache.maven.plugins</groupId>
-                      <artifactId>maven-gpg-plugin</artifactId>
-                      <version>1.5</version>
-                      <executions>
-                          <execution>
-                              <id>sign-artifacts</id>
-                              <phase>verify</phase>
-                              <goals>
-                                  <goal>sign</goal>
-                              </goals>
-                          </execution>
-                      </executions>
-                  </plugin>
-              </plugins>
-          </build>
-      </profile>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.5</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 
 </project>
