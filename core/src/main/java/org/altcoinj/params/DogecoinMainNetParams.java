@@ -16,9 +16,12 @@
 
 package org.altcoinj.params;
 
-import org.altcoinj.core.NetworkParameters;
-import org.altcoinj.core.Sha256Hash;
-import org.altcoinj.core.Utils;
+import java.util.Map;
+
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.Utils;
+import org.bitcoinj.utils.MonetaryFormat;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -26,8 +29,10 @@ import static com.google.common.base.Preconditions.checkState;
  * Parameters for the main production network on which people trade goods and services.
  */
 public class DogecoinMainNetParams extends AbstractDogecoinParams {
+    protected static final int DIFFICULTY_CHANGE_TARGET = 145000;
+
     public DogecoinMainNetParams() {
-        super();
+        super(DIFFICULTY_CHANGE_TARGET);
         dumpedPrivateKeyHeader = 158; //This is always addressHeader + 128
         addressHeader = 30;
         p2shHeader = 22;
@@ -42,8 +47,6 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         id = ID_DOGE_MAINNET;
         subsidyDecreaseBlockCount = 100000;
         spendableCoinbaseDepth = 100;
-
-        diffChangeTarget = 145000;
 
         String genesisHash = genesisBlock.getHashAsString();
         checkState(genesisHash.equals("1a91e3dace36e2be3bf030a65679fe821aa1d6ef92e7c9902eb318182c355691"),

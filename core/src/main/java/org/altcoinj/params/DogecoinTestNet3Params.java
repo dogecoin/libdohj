@@ -17,8 +17,8 @@
 
 package org.altcoinj.params;
 
-import org.altcoinj.core.NetworkParameters;
-import org.altcoinj.core.Utils;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.Utils;
 import org.spongycastle.util.encoders.Hex;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -28,8 +28,10 @@ import static com.google.common.base.Preconditions.checkState;
  * and testing of applications and new Bitcoin versions.
  */
 public class DogecoinTestNet3Params extends AbstractDogecoinParams {
+    protected static final int DIFFICULTY_CHANGE_TARGET = 145000;
+
     public DogecoinTestNet3Params() {
-        super();
+        super(DIFFICULTY_CHANGE_TARGET);
         id = ID_DOGE_TESTNET;
         // Genesis hash is bb0a78264637406b6360aad926284d544d7049f45189db5664f3c4d07350559e
         packetMagic = 0xfcc1b7dc;
@@ -49,8 +51,6 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         checkState(genesisHash.equals("bb0a78264637406b6360aad926284d544d7049f45189db5664f3c4d07350559e"));
         alertSigningKey = Hex.decode("042756726da3c7ef515d89212ee1705023d14be389e25fe15611585661b9a20021908b2b80a3c7200a0139dd2b26946606aab0eef9aa7689a6dc2c7eee237fa834");
 
-        diffChangeTarget = 145000;
-
         dnsSeeds = new String[] {
             "testnets.chain.so"  // Chain.so
         };
@@ -61,7 +61,7 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
     private static DogecoinTestNet3Params instance;
     public static synchronized DogecoinTestNet3Params get() {
         if (instance == null) {
-            instance = new TestNet3Params();
+            instance = new DogecoinTestNet3Params();
         }
         return instance;
     }
