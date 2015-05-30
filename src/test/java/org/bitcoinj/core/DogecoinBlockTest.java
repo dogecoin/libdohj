@@ -86,7 +86,6 @@ public class DogecoinBlockTest {
         };
         assertArrayEquals(expected, coinbaseMerkleBranch.getHashes().toArray(new Sha256Hash[coinbaseMerkleBranch.getSize()]));
 
-        System.out.println(block.toString());
         assertEquals(6, block.getTransactions().size());
     }
 }

@@ -1,12 +1,9 @@
 package org.bitcoinj.core;
 
-import java.io.ByteArrayOutputStream;
-
 import org.bitcoinj.params.TestNet3Params;
-import org.junit.Before;
 import org.junit.Test;
 
-import static org.bitcoinj.core.CoinbaseBlockTest.getBytes;
+import static org.bitcoinj.core.Util.getBytes;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;

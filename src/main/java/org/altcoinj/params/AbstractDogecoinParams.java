@@ -26,7 +26,6 @@ import org.bitcoinj.core.Coin;
 import static org.bitcoinj.core.Coin.COIN;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.Utils;
 import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptOpCodes;
@@ -38,11 +37,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkState;
+import org.bitcoinj.core.StoredBlock;
+import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.TransactionInput;
+import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.core.Utils;
 
 /**
  * Parameters for the main Dogecoin production network on which people trade goods and services.
  */
-public class AbstractDogecoinParams extends NetworkParameters {
+public abstract class AbstractDogecoinParams extends NetworkParameters implements AuxPoWNetworkParameters {
     /** Standard format for the DOGE denomination. */
     public static final MonetaryFormat DOGE;
     /** Standard format for the mDOGE denomination. */
@@ -284,5 +288,11 @@ public class AbstractDogecoinParams extends NetworkParameters {
      */
     public int getDigishieldBlockHeight() {
         return DIGISHIELD_BLOCK_HEIGHT;
+    }
+
+    @Override
+    public boolean isAuxPoWBlockVersion(long version) {
+        return version >= BLOCK_VERSION_AUXPOW
+            && (version & BLOCK_VERSION_FLAG_AUXPOW) > 0;
     }
 }

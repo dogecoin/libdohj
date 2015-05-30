@@ -15,30 +15,22 @@
  * limitations under the License.
  */
 
-package org.altcoinj.core;
+package org.bitcoinj.core;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.altcoinj.core.ScryptHash;
 import static org.altcoinj.core.Utils.scryptDigest;
 
-import static org.bitcoinj.core.Coin.FIFTY_COINS;
-import static org.bitcoinj.core.Utils.doubleDigest;
-import static org.bitcoinj.core.Utils.doubleDigestTwoBuffers;
+import static org.bitcoinj.core.Utils.reverseBytes;
 
 /**
  * <p>A block is a group of transactions, and is one of the fundamental data structures of the Bitcoin system.
@@ -69,7 +61,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
 
     /** Constructs a block object from the Bitcoin wire format. */
     public AltcoinBlock(NetworkParameters params, byte[] payloadBytes) throws ProtocolException {
-        super(params, payloadBytes, 0, false, false, payloadBytes.length);
+        super(params, payloadBytes);
     }
 
     /**
@@ -85,7 +77,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
      */
     public AltcoinBlock(NetworkParameters params, byte[] payloadBytes, boolean parseLazy, boolean parseRetain, int length)
             throws ProtocolException {
-        super(params, payloadBytes, 0, parseLazy, parseRetain, length);
+        super(params, payloadBytes, parseLazy, parseRetain, length);
     }
 
     /**
@@ -107,7 +99,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     public AltcoinBlock(NetworkParameters params, byte[] payloadBytes, int offset, @Nullable Message parent, boolean parseLazy, boolean parseRetain, int length)
             throws ProtocolException {
         // TODO: Keep the parent
-        super(params, payloadBytes, offset, parseLazy, parseRetain, length);
+        super(params, payloadBytes, offset, parent, parseLazy, parseRetain, length);
     }
 
 
@@ -131,7 +123,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         try {
             ByteArrayOutputStream bos = new UnsafeByteArrayOutputStream(HEADER_SIZE);
             writeHeader(bos);
-            return new ScryptHash(Utils.reverseBytes(scryptDigest(bos.toByteArray())));
+            return new ScryptHash(reverseBytes(scryptDigest(bos.toByteArray())));
         } catch (IOException e) {
             throw new RuntimeException(e); // Cannot happen.
         } catch (GeneralSecurityException e) {
@@ -223,16 +215,8 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     /** Returns a copy of the block, but without any transactions. */
     @Override
     public Block cloneAsHeader() {
-        maybeParseHeader();
         AltcoinBlock block = new AltcoinBlock(params);
-        block.nonce = nonce;
-        block.prevBlockHash = prevBlockHash;
-        block.merkleRoot = getMerkleRoot();
-        block.version = version;
-        block.time = time;
-        block.difficultyTarget = difficultyTarget;
-        block.transactions = null;
-        block.hash = getHash();
+        super.copyBitcoinHeaderTo(block);
         block.auxpow = auxpow;
         return block;
     }

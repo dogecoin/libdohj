@@ -94,10 +94,4 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         // TODO: CHANGE THIS
         return ID_DOGE_MAINNET;
     }
-
-    @Override
-    public boolean isAuxPoWBlockVersion(long version) {
-        return version >= BLOCK_VERSION_AUXPOW
-            && (version & BLOCK_VERSION_FLAG_AUXPOW) > 0;
-    }
 }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.altcoinj.core;
+package org.bitcoinj.core;
 
 import static org.bitcoinj.core.Utils.doubleDigestTwoBuffers;
 import static org.bitcoinj.core.Utils.reverseBytes;

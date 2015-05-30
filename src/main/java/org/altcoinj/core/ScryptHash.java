@@ -16,6 +16,7 @@
 package org.altcoinj.core;
 
 import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.Sha256Hash;
 
 /**
  * Scrypt hash. Currently extends Sha256Hash (so no real type safety is provided),
