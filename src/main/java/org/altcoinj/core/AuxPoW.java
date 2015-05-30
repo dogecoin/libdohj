@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.bitcoinj.core;
+package org.altcoinj.core;
 
 import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.script.Script;
@@ -126,8 +126,8 @@ public class AuxPoW extends ChildMessage implements Serializable {
             return;
 
         cursor = offset;
-		transaction = new Transaction(params, payload, cursor, this, parseLazy, parseRetain, Message.UNKNOWN_LENGTH);
-		cursor += transaction.getOptimalEncodingMessageSize();
+        transaction = new Transaction(params, payload, cursor, this, parseLazy, parseRetain, Message.UNKNOWN_LENGTH);
+        cursor += transaction.getOptimalEncodingMessageSize();
         optimalEncodingMessageSize = transaction.getOptimalEncodingMessageSize();        
 
         hashBlock = readHash();

@@ -15,13 +15,11 @@
  * limitations under the License.
  */
 
-package org.bitcoinj.core;
+package org.altcoinj.core;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -29,10 +27,14 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedList;
+import java.security.GeneralSecurityException;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.altcoinj.core.ScryptHash;
+import static org.altcoinj.core.Utils.scryptDigest;
 
 import static org.bitcoinj.core.Coin.FIFTY_COINS;
 import static org.bitcoinj.core.Utils.doubleDigest;
@@ -55,11 +57,13 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     private boolean auxpowParsed = false;
     private boolean auxpowBytesValid = false;
 
-	/** AuxPoW header element, if applicable. */
-	@Nullable private AuxPoW auxpow;
+    /** AuxPoW header element, if applicable. */
+    @Nullable private AuxPoW auxpow;
+
+    private ScryptHash scryptHash;
 
     /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests. */
-    AltcoinBlock(NetworkParameters params) {
+    public AltcoinBlock(NetworkParameters params) {
         super(params);
     }
 
@@ -123,18 +127,54 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         super(params, version, prevBlockHash, merkleRoot, time, difficultyTarget, nonce, transactions);
     }
 
-    @Override
+    private ScryptHash calculateScryptHash() {
+        try {
+            ByteArrayOutputStream bos = new UnsafeByteArrayOutputStream(HEADER_SIZE);
+            writeHeader(bos);
+            return new ScryptHash(Utils.reverseBytes(scryptDigest(bos.toByteArray())));
+        } catch (IOException e) {
+            throw new RuntimeException(e); // Cannot happen.
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException(e); // Cannot happen.
+        }
+    }
+
+    public AuxPoW getAuxPoW() {
+        // TODO: maybeParseAuxPoW();
+        return this.auxpow;
+    }
+
+    /**
+     * Returns the Scrypt hash of the block (which for a valid, solved block should be
+     * below the target). Big endian.
+     */
+    public ScryptHash getScryptHash() {
+        if (scryptHash == null)
+            scryptHash = calculateScryptHash();
+        return scryptHash;
+    }
+
+    /**
+     * Returns the Scrypt hash of the block.
+     */
+    public String getScryptHashAsString() {
+        return getScryptHash().toString();
+    }
+
     protected void parseAuxPoW() throws ProtocolException {
         if (this.auxpowParsed)
             return;
 
-		if (this.params.isAuxPoWBlockVersion(this.version)) {
-			// The following is used in dogecoinj, but I don't think we necessarily need it
-			// payload.length >= 160) { // We have at least 2 headers in an Aux block. Workaround for StoredBlocks
-			this.auxpow = new AuxPoW(params, payload, cursor, this, parseLazy, parseRetain);
-		} else {
-			this.auxpow = null;
-		}
+        this.auxpow = null;
+        if (this.params instanceof AuxPoWNetworkParameters) {
+            final AuxPoWNetworkParameters altcoinParams = (AuxPoWNetworkParameters)this.params;
+            if (altcoinParams.isAuxPoWBlockVersion(this.getVersion())) {
+                // The following is used in dogecoinj, but I don't think we necessarily need it
+                // payload.length >= 160) { // We have at least 2 headers in an Aux block. Workaround for StoredBlocks
+                this.auxpow = new AuxPoW(params, payload, cursor, this, parseLazy, parseRetain);
+                optimalEncodingMessageSize += auxpow.getOptimalEncodingMessageSize();
+            }
+        }
 
         this.auxpowParsed = true;
         this.auxpowBytesValid = parseRetain;
@@ -149,6 +189,15 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     }
 
     @Override
+    protected void parseTransactions() {
+        if (null != this.auxpow) {
+            parseTransactions(HEADER_SIZE + auxpow.getMessageSize());
+        } else {
+            parseTransactions(HEADER_SIZE);
+        }
+    }
+
+    @Override
     protected void parseLite() throws ProtocolException {
         // Ignore the header since it has fixed length. If length is not provided we will have to
         // invoke a light parse of transactions to calculate the length.
@@ -156,8 +205,8 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
             Preconditions.checkState(parseLazy,
                     "Performing lite parse of block transaction as block was initialised from byte array " +
                     "without providing length.  This should never need to happen.");
+            parseAuxPoW();
             parseTransactions();
-            // TODO: Handle AuxPoW header space
             length = cursor - offset;
         } else {
             transactionBytesValid = !transactionsParsed || parseRetain && length > HEADER_SIZE;

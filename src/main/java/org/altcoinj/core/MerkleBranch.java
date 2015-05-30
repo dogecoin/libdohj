@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.bitcoinj.core;
+package org.altcoinj.core;
 
 import static org.bitcoinj.core.Utils.doubleDigestTwoBuffers;
 import static org.bitcoinj.core.Utils.reverseBytes;
@@ -88,14 +88,14 @@ public class MerkleBranch extends ChildMessage implements Serializable {
         super(params);
         setParent(parent);
 
-		this.branchHashes = hashes;
-		this.branchSideMask = branchSideMask;
+        this.branchHashes = hashes;
+        this.branchSideMask = branchSideMask;
     }
 
     @Override
     protected void parseLite() throws ProtocolException {
-		length = calcLength(payload, offset);
-		cursor = offset + length;
+        length = calcLength(payload, offset);
+        cursor = offset + length;
     }
 
     protected static int calcLength(byte[] buf, int offset) {
@@ -113,10 +113,10 @@ public class MerkleBranch extends ChildMessage implements Serializable {
 
         final int hashCount = (int) readVarInt();
         optimalEncodingMessageSize += VarInt.sizeOf(hashCount);
-		branchHashes = new ArrayList<Sha256Hash>(hashCount);
-		for (int hashIdx = 0; hashIdx < hashCount; hashIdx++) {
-			branchHashes.add(readHash());
-		}
+        branchHashes = new ArrayList<Sha256Hash>(hashCount);
+        for (int hashIdx = 0; hashIdx < hashCount; hashIdx++) {
+                branchHashes.add(readHash());
+        }
         optimalEncodingMessageSize += 32 * hashCount;
 		branchSideMask = readUint32();
         optimalEncodingMessageSize += 4;
@@ -125,9 +125,9 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     @Override
     protected void bitcoinSerializeToStream(OutputStream stream) throws IOException {
         stream.write(new VarInt(branchHashes.size()).encode());
-		for (Sha256Hash hash: branchHashes) {
-			stream.write(Utils.reverseBytes(hash.getBytes()));
-		}
+        for (Sha256Hash hash: branchHashes) {
+                stream.write(Utils.reverseBytes(hash.getBytes()));
+        }
         Utils.uint32ToByteStreamLE(branchSideMask, stream);
     }
 
