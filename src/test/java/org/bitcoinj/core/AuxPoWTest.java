@@ -1,6 +1,7 @@
 package org.bitcoinj.core;
 
-import org.bitcoinj.params.TestNet3Params;
+import java.math.BigInteger;
+import org.altcoinj.params.DogecoinTestNet3Params;
 import org.junit.Test;
 
 import static org.bitcoinj.core.Util.getBytes;
@@ -12,7 +13,7 @@ import static org.junit.Assert.assertEquals;
  * AuxPoW header parsing/serialization and validation
  */
 public class AuxPoWTest {
-    static final NetworkParameters params = TestNet3Params.get();
+    static final NetworkParameters params = DogecoinTestNet3Params.get();
 
     /**
      * Parse the AuxPoW header from Dogecoin block #403,931.
@@ -20,13 +21,13 @@ public class AuxPoWTest {
     @Test
     public void parseAuxPoWHeader() throws Exception {
         byte[] auxpowAsBytes = getBytes(getClass().getResourceAsStream("auxpow_header.bin"));
-        AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, false, false);
+        AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, params.getDefaultSerializer());
         MerkleBranch branch = auxpow.getCoinbaseBranch();
         Sha256Hash expected = new Sha256Hash("089b911f5e471c0e1800f3384281ebec5b372fbb6f358790a92747ade271ccdf");
 
         assertEquals(expected, auxpow.getCoinbase().getHash());
-        assertEquals(3, auxpow.getCoinbaseBranch().getSize());
-        assertEquals(6, auxpow.getBlockchainBranch().getSize());
+        assertEquals(3, auxpow.getCoinbaseBranch().size());
+        assertEquals(6, auxpow.getChainMerkleBranch().size());
 
         expected = new Sha256Hash("a22a9b01671d639fa6389f62ecf8ce69204c8ed41d5f1a745e0c5ba7116d5b4c");
         assertEquals(expected, auxpow.getParentBlockHeader().getHash());
@@ -38,10 +39,21 @@ public class AuxPoWTest {
     @Test
     public void serializeAuxPoWHeader() throws Exception {
         byte[] auxpowAsBytes = getBytes(getClass().getResourceAsStream("auxpow_header.bin"));
-        AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, false, false);
+        AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, params.getDefaultSerializer());
         byte[] expected = auxpowAsBytes;
         byte[] actual = auxpow.bitcoinSerialize();
 
         assertArrayEquals(expected, actual);
+    }
+
+    /**
+     * Validate the AuxPoW header from Dogecoin block #403,931.
+     */
+    @Test
+    public void checkAuxPoWHeader() throws Exception {
+        byte[] auxpowAsBytes = getBytes(getClass().getResourceAsStream("auxpow_header.bin"));
+        AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, params.getDefaultSerializer());
+        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+            Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 }

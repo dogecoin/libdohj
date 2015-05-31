@@ -29,7 +29,8 @@ public class DogecoinBlockTest {
     @Test
     public void shouldParseBlock1() throws IOException {
         byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block1.bin"));
-        final AltcoinBlock block = new AltcoinBlock(params, payload);
+        AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
+        final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
         assertEquals("82bc68038f6034c0596b6e313729793a887fded6e92a31fbdf70863f89d9bea2", block.getHashAsString());
         assertEquals(1, block.getTransactions().size());
     }
@@ -41,7 +42,8 @@ public class DogecoinBlockTest {
     @Test
     public void shouldParseBlock250000() throws IOException {
         byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block250000.bin"));
-        final AltcoinBlock block = new AltcoinBlock(params, payload);
+        AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
+        final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
         assertEquals(2469341065L, block.getNonce());
         final AuxPoW auxpow = block.getAuxPoW();
         assertNull(auxpow);
@@ -58,7 +60,8 @@ public class DogecoinBlockTest {
     @Test
     public void shouldParseBlock371337() throws IOException {
         byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block371337.bin"));
-        final AltcoinBlock block = new AltcoinBlock(params, payload);
+        AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
+        final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
         assertEquals("60323982f9c5ff1b5a954eac9dc1269352835f47c2c5222691d80f0d50dcf053", block.getHashAsString());
         assertEquals(0, block.getNonce());
         final AuxPoW auxpow = block.getAuxPoW();
@@ -69,14 +72,14 @@ public class DogecoinBlockTest {
         assertEquals("45df41e40aba5b2a03d08bd1202a1c02ef3954d8aa22ea6c5ae62fd00f290ea9", parentBlock.getHashAsString());
         assertNull(parentBlock.getTransactions());
 
-        final MerkleBranch blockchainMerkleBranch = auxpow.getBlockchainBranch();
+        final MerkleBranch blockchainMerkleBranch = auxpow.getChainMerkleBranch();
         Sha256Hash[] expected = new Sha256Hash[] {
             new Sha256Hash("b541c848bc001d07d2bdf8643abab61d2c6ae50d5b2495815339a4b30703a46f"),
             new Sha256Hash("78d6abe48cee514cf3496f4042039acb7e27616dcfc5de926ff0d6c7e5987be7"),
             new Sha256Hash("a0469413ce64d67c43902d54ee3a380eff12ded22ca11cbd3842e15d48298103")
         };
 
-        assertArrayEquals(expected, blockchainMerkleBranch.getHashes().toArray(new Sha256Hash[blockchainMerkleBranch.getSize()]));
+        assertArrayEquals(expected, blockchainMerkleBranch.getHashes().toArray(new Sha256Hash[blockchainMerkleBranch.size()]));
 
         final MerkleBranch coinbaseMerkleBranch = auxpow.getCoinbaseBranch();
         expected = new Sha256Hash[] {
@@ -84,7 +87,7 @@ public class DogecoinBlockTest {
             new Sha256Hash("48f9e8fef3411944e27f49ec804462c9e124dca0954c71c8560e8a9dd218a452"),
             new Sha256Hash("d11293660392e7c51f69477a6130237c72ecee2d0c1d3dc815841734c370331a")
         };
-        assertArrayEquals(expected, coinbaseMerkleBranch.getHashes().toArray(new Sha256Hash[coinbaseMerkleBranch.getSize()]));
+        assertArrayEquals(expected, coinbaseMerkleBranch.getHashes().toArray(new Sha256Hash[coinbaseMerkleBranch.size()]));
 
         assertEquals(6, block.getTransactions().size());
     }

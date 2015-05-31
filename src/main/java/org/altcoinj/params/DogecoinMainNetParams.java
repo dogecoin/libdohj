@@ -17,7 +17,6 @@
 package org.altcoinj.params;
 
 import org.altcoinj.core.ScryptHash;
-import org.bitcoinj.core.AltcoinBlock;
 
 import static com.google.common.base.Preconditions.checkState;
 

@@ -20,12 +20,11 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import org.bitcoinj.core.AltcoinBlock;
 
-import org.bitcoinj.core.AuxPoWNetworkParameters;
+import org.bitcoinj.core.AltcoinNetworkParameters;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Coin;
 import static org.bitcoinj.core.Coin.COIN;
 import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptOpCodes;
@@ -36,7 +35,8 @@ import org.bitcoinj.utils.MonetaryFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.google.common.base.Preconditions.checkState;
+import org.bitcoinj.core.AltcoinSerializer;
+import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.StoredBlock;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionInput;
@@ -46,7 +46,7 @@ import org.bitcoinj.core.Utils;
 /**
  * Parameters for the main Dogecoin production network on which people trade goods and services.
  */
-public abstract class AbstractDogecoinParams extends NetworkParameters implements AuxPoWNetworkParameters {
+public abstract class AbstractDogecoinParams extends NetworkParameters implements AltcoinNetworkParameters {
     /** Standard format for the DOGE denomination. */
     public static final MonetaryFormat DOGE;
     /** Standard format for the mDOGE denomination. */
@@ -55,6 +55,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     public static final MonetaryFormat KOINU;
 
     public static final int DIGISHIELD_BLOCK_HEIGHT = 145000; // Block height to use Digishield from
+    public static final int AUXPOW_CHAIN_ID = 0x0062; // 98
     public static final int DOGE_TARGET_TIMESPAN = 4 * 60 * 60;  // 4 hours per difficulty cycle, on average.
     public static final int DOGE_TARGET_TIMESPAN_NEW = 60;  // 60s per difficulty cycle, on average. Kicks in after block 145k.
     public static final int DOGE_TARGET_SPACING = 1 * 60;  // 1 minute per block.
@@ -288,6 +289,24 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
      */
     public int getDigishieldBlockHeight() {
         return DIGISHIELD_BLOCK_HEIGHT;
+    }
+
+    @Override
+    public int getChainID() {
+        return AUXPOW_CHAIN_ID;
+    }
+
+    /**
+     * Get the hash to use for a block.
+     */
+    @Override
+    public Sha256Hash getBlockDifficultyHash(Block block) {
+        return ((AltcoinBlock) block).getScryptHash();
+    }
+
+    @Override
+    public AltcoinSerializer getSerializer(boolean parseLazy, boolean parseRetain) {
+        return new AltcoinSerializer(this, parseLazy, parseRetain);
     }
 
     @Override

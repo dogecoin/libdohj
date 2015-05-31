@@ -23,23 +23,31 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.*;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.*;
 
 
 /**
  * <p>An AuxPoW header wraps a block header from another coin, enabling the foreign
- * chain's proof of work to be used for this chain as well.</p>
+ * chain's proof of work to be used for this chain as well. <b>Note: </b>
+ * NetworkParameters for AuxPoW networks <b>must</b> implement AltcoinNetworkParameters
+ * in order for AuxPoW to work.</p>
  */
 public class AuxPoW extends ChildMessage implements Serializable {
-    
+
+    public static final byte[] MERGED_MINING_HEADER = new byte[] {
+        (byte) 0xfa, (byte) 0xbe, "m".getBytes()[0], "m".getBytes()[0]
+    };
+
     private static final Logger log = LoggerFactory.getLogger(AuxPoW.class);
     private static final long serialVersionUID = -8567546957352643140L;
 
-	private Transaction transaction;
+    private Transaction transaction;
     private Sha256Hash hashBlock;
     private MerkleBranch coinbaseBranch;
-    private MerkleBranch blockchainBranch;
-    private Block parentBlockHeader;
+    private MerkleBranch chainMerkleBranch;
+    private AltcoinBlock parentBlockHeader;
 
     // Transactions can be encoded in a way that will use more bytes than is optimal
     // (due to VarInts having multiple encodings)
@@ -50,36 +58,38 @@ public class AuxPoW extends ChildMessage implements Serializable {
 
     public AuxPoW(NetworkParameters params, @Nullable Message parent) {
         super(params);
-		transaction = new Transaction(params);
-		hashBlock = Sha256Hash.ZERO_HASH;
-		coinbaseBranch = new MerkleBranch(params, this);
-		blockchainBranch = new MerkleBranch(params, this);
-		parentBlockHeader = null;
+        transaction = new Transaction(params);
+        hashBlock = Sha256Hash.ZERO_HASH;
+        coinbaseBranch = new MerkleBranch(params, this);
+        chainMerkleBranch = new MerkleBranch(params, this);
+        parentBlockHeader = null;
     }
 
     /**
      * Creates an AuxPoW header by reading payload starting from offset bytes in. Length of header is fixed.
-     * @param params NetworkParameters object.1
+     * @param params NetworkParameters object.
      * @param payload Bitcoin protocol formatted byte array containing message content.
      * @param offset The location of the first payload byte within the array.
      * @param parent The message element which contains this header.
-     * @param parseLazy Whether to perform a full parse immediately or delay until a read is requested.
-     * @param parseRetain Whether to retain the backing byte array for quick reserialization.  
-     * If true and the backing byte array is invalidated due to modification of a field then 
-     * the cached bytes may be repopulated and retained if the message is serialized again in the future.
+     * @param serializer the serializer to use for this message.
      * @throws ProtocolException
      */
-    public AuxPoW(NetworkParameters params, byte[] payload, int offset, Message parent, boolean parseLazy, boolean parseRetain)
+    public AuxPoW(NetworkParameters params, byte[] payload, int offset, Message parent, MessageSerializer serializer)
             throws ProtocolException {
-        super(params, payload, offset, parent, parseLazy, parseRetain, Message.UNKNOWN_LENGTH);
+        super(params, payload, offset, parent, serializer, Message.UNKNOWN_LENGTH);
     }
 
     /**
      * Creates an AuxPoW header by reading payload starting from offset bytes in. Length of header is fixed.
+     * 
+     * @param params NetworkParameters object.
+     * @param payload Bitcoin protocol formatted byte array containing message content.
+     * @param parent The message element which contains this header.
+     * @param serializer the serializer to use for this message.
      */
-    public AuxPoW(NetworkParameters params, byte[] payload, @Nullable Message parent, boolean parseLazy, boolean parseRetain)
+    public AuxPoW(NetworkParameters params, byte[] payload, @Nullable Message parent, MessageSerializer serializer)
             throws ProtocolException {
-        super(params, payload, 0, parent, parseLazy, parseRetain, Message.UNKNOWN_LENGTH);
+        super(params, payload, 0, parent, serializer, Message.UNKNOWN_LENGTH);
     }
 
     @Override
@@ -96,11 +106,11 @@ public class AuxPoW extends ChildMessage implements Serializable {
         // jump past header hash
         cursor += 4;
 
-		// Coin base branch
-		cursor += MerkleBranch.calcLength(buf, offset);
+        // Coin base branch
+        cursor += MerkleBranch.calcLength(buf, offset);
 
-		// Block chain branch
-		cursor += MerkleBranch.calcLength(buf, offset);
+        // Block chain branch
+        cursor += MerkleBranch.calcLength(buf, offset);
 
         // Block header
 		cursor += Block.HEADER_SIZE;
@@ -115,26 +125,26 @@ public class AuxPoW extends ChildMessage implements Serializable {
             return;
 
         cursor = offset;
-        transaction = new Transaction(params, payload, cursor, this, parseLazy, parseRetain, Message.UNKNOWN_LENGTH);
+        transaction = new Transaction(params, payload, cursor, this, serializer, Message.UNKNOWN_LENGTH);
         cursor += transaction.getOptimalEncodingMessageSize();
         optimalEncodingMessageSize = transaction.getOptimalEncodingMessageSize();        
 
         hashBlock = readHash();
-		optimalEncodingMessageSize += 32; // Add the hash size to the optimal encoding
+        optimalEncodingMessageSize += 32; // Add the hash size to the optimal encoding
 
-		coinbaseBranch = new MerkleBranch(params, this, payload, cursor, parseLazy, parseRetain);
-		cursor += coinbaseBranch.getOptimalEncodingMessageSize();
-		optimalEncodingMessageSize += coinbaseBranch.getOptimalEncodingMessageSize();
+        coinbaseBranch = new MerkleBranch(params, this, payload, cursor, serializer);
+        cursor += coinbaseBranch.getOptimalEncodingMessageSize();
+        optimalEncodingMessageSize += coinbaseBranch.getOptimalEncodingMessageSize();
 
-		blockchainBranch = new MerkleBranch(params, this, payload, cursor, parseLazy, parseRetain);
-		cursor += blockchainBranch.getOptimalEncodingMessageSize();
-		optimalEncodingMessageSize += blockchainBranch.getOptimalEncodingMessageSize();
+        chainMerkleBranch = new MerkleBranch(params, this, payload, cursor, serializer);
+        cursor += chainMerkleBranch.getOptimalEncodingMessageSize();
+        optimalEncodingMessageSize += chainMerkleBranch.getOptimalEncodingMessageSize();
 
         // Make a copy of JUST the contained block header, so the block parser doesn't try reading
         // transactions past the end
         byte[] blockBytes = Arrays.copyOfRange(payload, cursor, cursor + Block.HEADER_SIZE);
         cursor += Block.HEADER_SIZE;
-		parentBlockHeader = new AltcoinBlock(params, blockBytes, 0, this, parseLazy, parseRetain, Block.HEADER_SIZE);
+        parentBlockHeader = new AltcoinBlock(params, blockBytes, 0, this, serializer, Block.HEADER_SIZE);
 
         length = cursor - offset;
     }
@@ -164,13 +174,13 @@ public class AuxPoW extends ChildMessage implements Serializable {
 
     @Override
     protected void bitcoinSerializeToStream(OutputStream stream) throws IOException {
-		transaction.bitcoinSerialize(stream);
+        transaction.bitcoinSerialize(stream);
         stream.write(Utils.reverseBytes(hashBlock.getBytes()));
 
-		coinbaseBranch.bitcoinSerialize(stream);
-		blockchainBranch.bitcoinSerialize(stream);
+        coinbaseBranch.bitcoinSerialize(stream);
+        chainMerkleBranch.bitcoinSerialize(stream);
 
-		parentBlockHeader.bitcoinSerializeToStream(stream);
+        parentBlockHeader.bitcoinSerializeToStream(stream);
     }
 
     @Override
@@ -178,11 +188,11 @@ public class AuxPoW extends ChildMessage implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         AuxPoW input = (AuxPoW) o;
-		if (!transaction.equals(input.transaction)) return false;
-		if (!hashBlock.equals(input.hashBlock)) return false;
-		if (!coinbaseBranch.equals(input.hashBlock)) return false;
-		if (!blockchainBranch.equals(input.hashBlock)) return false;
-		if (!parentBlockHeader.equals(input.hashBlock)) return false;
+        if (!transaction.equals(input.transaction)) return false;
+        if (!hashBlock.equals(input.hashBlock)) return false;
+        if (!coinbaseBranch.equals(input.hashBlock)) return false;
+        if (!chainMerkleBranch.equals(input.hashBlock)) return false;
+        if (!parentBlockHeader.equals(input.hashBlock)) return false;
         return getHash().equals(input.getHash());
     }
 
@@ -192,7 +202,7 @@ public class AuxPoW extends ChildMessage implements Serializable {
         result = 31 * result + transaction.hashCode();
         result = 31 * result + hashBlock.hashCode();
         result = 31 * result + coinbaseBranch.hashCode();
-        result = 31 * result + blockchainBranch.hashCode();
+        result = 31 * result + chainMerkleBranch.hashCode();
         result = 31 * result + parentBlockHeader.hashCode();
         return result;
     }
@@ -213,7 +223,7 @@ public class AuxPoW extends ChildMessage implements Serializable {
      * not necessarily part of the parent blockchain, they simply must be valid
      * blocks at the difficulty of the child blockchain.
      */
-    public Block getParentBlockHeader() {
+    public AltcoinBlock getParentBlockHeader() {
         return parentBlockHeader;
     }
 
@@ -229,8 +239,8 @@ public class AuxPoW extends ChildMessage implements Serializable {
     /**
      * Get the Merkle branch used to connect the AuXPow header with this blockchain.
      */
-    public MerkleBranch getBlockchainBranch() {
-        return blockchainBranch;
+    public MerkleBranch getChainMerkleBranch() {
+        return chainMerkleBranch;
     }
 
     /**
@@ -259,5 +269,171 @@ public class AuxPoW extends ChildMessage implements Serializable {
     public void verify() throws VerificationException {
         maybeParse();
         // TODO: Verify the AuxPoW data
+    }
+
+    /**
+     * Check the proof of work for this AuxPoW header meets the target
+     * difficulty.
+     *
+     * @param hashAuxBlock hash of the block the AuxPoW header is attached to.
+     * @param target the difficulty target after decoding from compact bits.
+     */
+    protected boolean checkProofOfWork(Sha256Hash hashAuxBlock,
+        BigInteger target, boolean throwException) throws VerificationException {
+        if (0 != this.getCoinbaseBranch().getIndex()) {
+            if (throwException) {
+                // I don't like the message, but it correlates with what's in the reference client.
+                throw new VerificationException("AuxPow is not a generate");
+            }
+            return false;
+        }
+
+        /* if (!TestNet()
+            parentBlockHeader.getChainID() == ((AuxPoWNetworkParameters) params).getChainID()) {
+            if (throwException) {
+                throw new VerificationException("Aux POW parent has our chain ID");
+            }
+            return false;
+        } */
+
+        if (this.getChainMerkleBranch().size() > 30) {
+            if (throwException) {
+                throw new VerificationException("Aux POW chain merkle branch too long");
+            }
+            return false;
+        }
+
+        // Check that the chain merkle root is in the coinbase
+        Sha256Hash nRootHash = getChainMerkleBranch().calculateMerkleRoot(hashAuxBlock);
+        final byte[] vchRootHash = nRootHash.getBytes();
+        //std::reverse(vchRootHash.begin(), vchRootHash.end()); // correct endian// correct endian
+
+        // Check that we are in the parent block merkle tree
+        if (!getCoinbaseBranch().calculateMerkleRoot(getCoinbase().getHash()).equals(parentBlockHeader.getMerkleRoot())) {
+            if (throwException) {
+                throw new VerificationException("Aux POW merkle root incorrect");
+            }
+            return false;
+        }
+
+        final byte[] script = this.getCoinbase().getInput(0).getScriptBytes();
+
+        // Check that the same work is not submitted twice to our chain.
+        //
+        int pcHead = -1;
+        int pc = -1;
+
+        for (int scriptIdx = 0; scriptIdx < script.length; scriptIdx++) {
+            if (arrayMatch(script, scriptIdx, MERGED_MINING_HEADER)) {
+                // Enforce only one chain merkle root by checking that a single instance of the merged
+                // mining header exists just before.
+                if (pcHead >= 0) {
+                    if (throwException) {
+                        throw new VerificationException("Multiple merged mining headers in coinbase");
+                    }
+                    return false;
+                }
+                pcHead = scriptIdx;
+            }
+            if (arrayMatch(script, scriptIdx, vchRootHash)) {
+                pc = scriptIdx;
+            }
+        }
+
+        if (-1 == pcHead) {
+            if (throwException) {
+                throw new VerificationException("MergedMiningHeader missing from parent coinbase");
+            }
+            return false;
+        }
+
+        if (-1 == pc) {
+            if (throwException) {
+                throw new VerificationException("Aux POW missing chain merkle root in parent coinbase");
+            }
+            return false;
+        }
+
+        if (pcHead + MERGED_MINING_HEADER.length != pc) {
+            if (throwException) {
+                throw new VerificationException("Merged mining header is not just before chain merkle root");
+            }
+            return false;
+        }
+
+        // Ensure we are at a deterministic point in the merkle leaves by hashing
+        // a nonce and our chain ID and comparing to the index.
+        pc += vchRootHash.length;
+        if ((script.length - pc) < 8) {
+            if (throwException) {
+                throw new VerificationException("Aux POW missing chain merkle tree size and nonce in parent coinbase");
+            }
+            return false;
+        }
+
+        byte[] sizeBytes = Utils.reverseBytes(Arrays.copyOfRange(script, pc, pc + 4));
+        int branchSize = ByteBuffer.wrap(sizeBytes).getInt();
+        if (branchSize != (1 << getChainMerkleBranch().size())) {
+            if (throwException) {
+                throw new VerificationException("Aux POW merkle branch size does not match parent coinbase");
+            }
+            return false;
+        }
+
+        byte[] nonceBytes = Utils.reverseBytes(Arrays.copyOfRange(script, pc + 4, pc + 8));
+        int nonce = ByteBuffer.wrap(nonceBytes).getInt();
+
+        // Choose a pseudo-random slot in the chain merkle tree
+        // but have it be fixed for a size/nonce/chain combination.
+        //
+        // This prevents the same work from being used twice for the
+        // same chain while reducing the chance that two chains clash
+        // for the same slot.
+        long rand = nonce;
+        rand = rand * 1103515245 + 12345;
+        rand += ((AltcoinNetworkParameters) params).getChainID();
+        rand = rand * 1103515245 + 12345;
+
+        if (getChainMerkleBranch().getIndex() != (rand % branchSize)) {
+            if (throwException) {
+                throw new VerificationException("Aux POW wrong index");
+            }
+            return false;
+        }
+
+        BigInteger h = ((AltcoinNetworkParameters) params)
+            .getBlockDifficultyHash(getParentBlockHeader())
+            .toBigInteger();
+        if (h.compareTo(target) > 0) {
+            // Proof of work check failed!
+            if (throwException) {
+                throw new VerificationException("Hash is higher than target: " + getParentBlockHeader().getHashAsString() + " vs "
+                        + target.toString(16));
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    public Transaction getTransaction() {
+        return transaction;
+    }
+
+    /**
+     * Test whether one array is at a specific offset within the other.
+     * 
+     * @param script the longer array to test for containing another array.
+     * @param offset the offset to start at within the larger array.
+     * @param subArray the shorter array to test for presence in the longer array.
+     * @return true if the shorter array is present at the offset, false otherwise.
+     */
+    private boolean arrayMatch(byte[] script, int offset, byte[] subArray) {
+        for (int matchIdx = 0; matchIdx + offset < script.length && matchIdx < subArray.length; matchIdx++) {
+            if (script[offset + matchIdx] != subArray[matchIdx]) {
+                return false;
+            }
+        }
+        return true;
     }
 }

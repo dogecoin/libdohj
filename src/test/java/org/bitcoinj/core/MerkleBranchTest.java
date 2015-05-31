@@ -1,6 +1,7 @@
 package org.bitcoinj.core;
 
 
+import static org.bitcoinj.core.AuxPoWTest.params;
 import org.bitcoinj.params.TestNet3Params;
 import org.junit.Test;
 
@@ -28,7 +29,7 @@ public class MerkleBranchTest {
             new Sha256Hash("d8c6fe42ca25076159cd121a5e20c48c1bc53ab90730083e44a334566ea6bbcb")
         };
 
-        assertArrayEquals(expected, branch.getHashes().toArray(new Sha256Hash[branch.getSize()]));
+        assertArrayEquals(expected, branch.getHashes().toArray(new Sha256Hash[branch.size()]));
     }
 
     /**
@@ -39,7 +40,7 @@ public class MerkleBranchTest {
     public void serializeMerkleBranch() throws Exception {
         byte[] expected = getBytes(getClass().getResourceAsStream("auxpow_merkle_branch.bin"));
         MerkleBranch branch = new MerkleBranch(params, (ChildMessage) null, expected, 0,
-            false, false);
+            params.getDefaultSerializer());
         byte[] actual = branch.bitcoinSerialize();
 
         assertArrayEquals(expected, actual);

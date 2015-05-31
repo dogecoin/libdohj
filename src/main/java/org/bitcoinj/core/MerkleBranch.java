@@ -35,6 +35,9 @@ import java.util.List;
  * up to its root, plus a bitset used to define how the hashes are applied.
  * Given the hash of the leaf, this can be used to calculate the tree
  * root. This is useful for proving that a leaf belongs to a given tree.
+ * 
+ * TODO: Has a lot of similarity to PartialMerkleTree, should attempt to merge
+ * the two.
  */
 public class MerkleBranch extends ChildMessage implements Serializable {
     private static final long serialVersionUID = 2;
@@ -46,15 +49,15 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     // can properly keep track of optimal encoded size
     private transient int optimalEncodingMessageSize;
 
-	private List<Sha256Hash> branchHashes;
-	private long branchSideMask;
+    private List<Sha256Hash> branchHashes;
+    private long index;
 
     public MerkleBranch(NetworkParameters params, @Nullable ChildMessage parent) {
         super(params);
         setParent(parent);
 
 		this.branchHashes = new ArrayList<Sha256Hash>();
-		this.branchSideMask = 0;
+		this.index = 0;
     }
 
     /**
@@ -70,17 +73,13 @@ public class MerkleBranch extends ChildMessage implements Serializable {
      * @param params NetworkParameters object.
      * @param payload Bitcoin protocol formatted byte array containing message content.
      * @param offset The location of the first payload byte within the array.
-     * @param parseLazy Whether to perform a full parse immediately or delay until a read is requested.
-     * @param parseRetain Whether to retain the backing byte array for quick reserialization.  
-     * If true and the backing byte array is invalidated due to modification of a field then 
-     * the cached bytes may be repopulated and retained if the message is serialized again in the future.
-     * as the length will be provided as part of the header.  If unknown then set to Message.UNKNOWN_LENGTH
+     * @param serializer the serializer to use for this message.
      * @throws ProtocolException
      */
     public MerkleBranch(NetworkParameters params, ChildMessage parent, byte[] payload, int offset,
-                            boolean parseLazy, boolean parseRetain)
+                        MessageSerializer serializer)
             throws ProtocolException {
-        super(params, payload, offset, parent, parseLazy, parseRetain, UNKNOWN_LENGTH);
+        super(params, payload, offset, parent, serializer, UNKNOWN_LENGTH);
     }
 
     public MerkleBranch(NetworkParameters params, @Nullable ChildMessage parent,
@@ -89,7 +88,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
         setParent(parent);
 
         this.branchHashes = hashes;
-        this.branchSideMask = branchSideMask;
+        this.index = branchSideMask;
     }
 
     @Override
@@ -118,7 +117,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
                 branchHashes.add(readHash());
         }
         optimalEncodingMessageSize += 32 * hashCount;
-		branchSideMask = readUint32();
+		index = readUint32();
         optimalEncodingMessageSize += 4;
     }
 
@@ -128,7 +127,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
         for (Sha256Hash hash: branchHashes) {
                 stream.write(Utils.reverseBytes(hash.getBytes()));
         }
-        Utils.uint32ToByteStreamLE(branchSideMask, stream);
+        Utils.uint32ToByteStreamLE(index, stream);
     }
 
     /**
@@ -137,7 +136,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
      */
     public Sha256Hash calculateMerkleRoot(final Sha256Hash leaf) {
         byte[] target = reverseBytes(leaf.getBytes());
-        long mask = branchSideMask;
+        long mask = index;
 
         for (Sha256Hash hash: branchHashes) {
             target = (mask & 1) == 0
@@ -156,9 +155,18 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     }
 
     /**
+     * Return the mask used to determine which side the hashes are applied on.
+     * Each bit represents a hash. Zero means it goes on the right, one means
+     * on the left.
+     */
+    public long getIndex() {
+        return index;
+    }
+
+    /**
      * Get the number of hashes in this branch.
      */
-    public int getSize() {
+    public int size() {
         return branchHashes.size();
     }
 
@@ -207,8 +215,8 @@ public class MerkleBranch extends ChildMessage implements Serializable {
 
         MerkleBranch input = (MerkleBranch) o;
 
-		if (!branchHashes.equals(input.branchHashes)) return false;
-		if (branchSideMask != input.branchSideMask) return false;
+        if (!branchHashes.equals(input.branchHashes)) return false;
+        if (index != input.index) return false;
 
         return true;
     }
@@ -217,7 +225,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     public int hashCode() {
         int result = 1;
         result = 31 * result + branchHashes.hashCode();
-        result = 31 * result + (int) branchSideMask;
+        result = 31 * result + (int) index;
         return result;
     }
 }

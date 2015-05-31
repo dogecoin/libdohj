@@ -59,49 +59,29 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         super(params);
     }
 
-    /** Constructs a block object from the Bitcoin wire format. */
-    public AltcoinBlock(NetworkParameters params, byte[] payloadBytes) throws ProtocolException {
-        super(params, payloadBytes);
+    /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests. */
+    public AltcoinBlock(NetworkParameters params, byte[] payloadBytes) {
+        this(params, payloadBytes, params.getDefaultSerializer(), payloadBytes.length);
     }
 
     /**
-     * Contruct a block object from the Bitcoin wire format.
+     * Construct a block object from the Bitcoin wire format.
      * @param params NetworkParameters object.
-     * @param parseLazy Whether to perform a full parse immediately or delay until a read is requested.
-     * @param parseRetain Whether to retain the backing byte array for quick reserialization.  
-     * If true and the backing byte array is invalidated due to modification of a field then 
-     * the cached bytes may be repopulated and retained if the message is serialized again in the future.
+     * @param serializer the serializer to use for this message.
      * @param length The length of message if known.  Usually this is provided when deserializing of the wire
      * as the length will be provided as part of the header.  If unknown then set to Message.UNKNOWN_LENGTH
      * @throws ProtocolException
      */
-    public AltcoinBlock(NetworkParameters params, byte[] payloadBytes, boolean parseLazy, boolean parseRetain, int length)
+    public AltcoinBlock(NetworkParameters params, byte[] payloadBytes, MessageSerializer serializer, int length)
             throws ProtocolException {
-        super(params, payloadBytes, parseLazy, parseRetain, length);
+        super(params, payloadBytes, serializer, length);
     }
 
-    /**
-     * Contruct a block object from the Bitcoin wire format. Used in the case of a block
-     * contained within another message (i.e. for AuxPoW header).
-     *
-     * @param params NetworkParameters object.
-     * @param payloadBytes Bitcoin protocol formatted byte array containing message content.
-     * @param offset The location of the first payload byte within the array.
-     * @param parent The message element which contains this block, maybe null for no parent.
-     * @param parseLazy Whether to perform a full parse immediately or delay until a read is requested.
-     * @param parseRetain Whether to retain the backing byte array for quick reserialization.  
-     * If true and the backing byte array is invalidated due to modification of a field then 
-     * the cached bytes may be repopulated and retained if the message is serialized again in the future.
-     * @param length The length of message if known.  Usually this is provided when deserializing of the wire
-     * as the length will be provided as part of the header.  If unknown then set to Message.UNKNOWN_LENGTH
-     * @throws ProtocolException
-     */
-    public AltcoinBlock(NetworkParameters params, byte[] payloadBytes, int offset, @Nullable Message parent, boolean parseLazy, boolean parseRetain, int length)
-            throws ProtocolException {
-        // TODO: Keep the parent
-        super(params, payloadBytes, offset, parent, parseLazy, parseRetain, length);
+    public AltcoinBlock(NetworkParameters params, byte[] payloadBytes, int offset,
+        Message parent, MessageSerializer serializer, int length)
+        throws ProtocolException {
+        super(params, payloadBytes, serializer, length);
     }
-
 
     /**
      * Construct a block initialized with all the given fields.
@@ -158,18 +138,18 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
             return;
 
         this.auxpow = null;
-        if (this.params instanceof AuxPoWNetworkParameters) {
-            final AuxPoWNetworkParameters altcoinParams = (AuxPoWNetworkParameters)this.params;
+        if (this.params instanceof AltcoinNetworkParameters) {
+            final AltcoinNetworkParameters altcoinParams = (AltcoinNetworkParameters)this.params;
             if (altcoinParams.isAuxPoWBlockVersion(this.getVersion())) {
                 // The following is used in dogecoinj, but I don't think we necessarily need it
                 // payload.length >= 160) { // We have at least 2 headers in an Aux block. Workaround for StoredBlocks
-                this.auxpow = new AuxPoW(params, payload, cursor, this, parseLazy, parseRetain);
+                this.auxpow = new AuxPoW(params, payload, cursor, this, serializer);
                 optimalEncodingMessageSize += auxpow.getOptimalEncodingMessageSize();
             }
         }
 
         this.auxpowParsed = true;
-        this.auxpowBytesValid = parseRetain;
+        this.auxpowBytesValid = serializer.isParseRetainMode();
     }
 
     @Override
@@ -194,22 +174,24 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         // Ignore the header since it has fixed length. If length is not provided we will have to
         // invoke a light parse of transactions to calculate the length.
         if (length == UNKNOWN_LENGTH) {
-            Preconditions.checkState(parseLazy,
+            Preconditions.checkState(serializer.isParseLazyMode(),
                     "Performing lite parse of block transaction as block was initialised from byte array " +
                     "without providing length.  This should never need to happen.");
             parseAuxPoW();
             parseTransactions();
             length = cursor - offset;
         } else {
-            transactionBytesValid = !transactionsParsed || parseRetain && length > HEADER_SIZE;
+            transactionBytesValid = !transactionsParsed || serializer.isParseRetainMode() && length > HEADER_SIZE;
         }
-        headerBytesValid = !headerParsed || parseRetain && length >= HEADER_SIZE;
+        headerBytesValid = !headerParsed || serializer.isParseRetainMode() && length >= HEADER_SIZE;
     }
 
     @Override
     void writeHeader(OutputStream stream) throws IOException {
         super.writeHeader(stream);
-        // TODO: Write the AuxPoW header
+        if (null != this.auxpow) {
+            this.auxpow.bitcoinSerialize(stream);
+        }
     }
 
     /** Returns a copy of the block, but without any transactions. */
@@ -223,28 +205,27 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
 
     /** Returns true if the hash of the block is OK (lower than difficulty target). */
     protected boolean checkProofOfWork(boolean throwException) throws VerificationException {
-        // TODO: Add AuxPoW support
+        if (params instanceof AltcoinNetworkParameters) {
+            BigInteger target = getDifficultyTargetAsInteger();
+        
+            final AltcoinNetworkParameters altParams = (AltcoinNetworkParameters)auxpow;
+            if (altParams.isAuxPoWBlockVersion(getVersion()) && null != auxpow) {
+                return auxpow.checkProofOfWork(this.getHash(), target, throwException);
+            }
 
-        // This part is key - it is what proves the block was as difficult to make as it claims
-        // to be. Note however that in the context of this function, the block can claim to be
-        // as difficult as it wants to be .... if somebody was able to take control of our network
-        // connection and fork us onto a different chain, they could send us valid blocks with
-        // ridiculously easy difficulty and this function would accept them.
-        //
-        // To prevent this attack from being possible, elsewhere we check that the difficultyTarget
-        // field is of the right value. This requires us to have the preceeding blocks.
-        BigInteger target = getDifficultyTargetAsInteger();
-
-        BigInteger h = getHash().toBigInteger();
-        if (h.compareTo(target) > 0) {
-            // Proof of work check failed!
-            if (throwException)
-                throw new VerificationException("Hash is higher than target: " + getHashAsString() + " vs "
-                        + target.toString(16));
-            else
-                return false;
+            BigInteger h = altParams.getBlockDifficultyHash(this).toBigInteger();
+            if (h.compareTo(target) > 0) {
+                // Proof of work check failed!
+                if (throwException)
+                    throw new VerificationException("Hash is higher than target: " + getHashAsString() + " vs "
+                            + target.toString(16));
+                else
+                    return false;
+            }
+            return true;
+        } else {
+            return super.checkProofOfWork(throwException);
         }
-        return true;
     }
 
     /**
