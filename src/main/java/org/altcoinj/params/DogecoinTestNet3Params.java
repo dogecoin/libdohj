@@ -71,4 +71,9 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         // TODO: CHANGE ME
         return PAYMENT_PROTOCOL_ID_TESTNET;
     }
+
+    @Override
+    public boolean isTestNet() {
+        return true;
+    }
 }

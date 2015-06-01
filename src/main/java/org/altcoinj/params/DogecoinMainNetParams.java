@@ -93,4 +93,9 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         // TODO: CHANGE THIS
         return ID_DOGE_MAINNET;
     }
+
+    @Override
+    public boolean isTestNet() {
+        return false;
+    }
 }

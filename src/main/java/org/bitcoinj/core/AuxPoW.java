@@ -190,9 +190,9 @@ public class AuxPoW extends ChildMessage implements Serializable {
         AuxPoW input = (AuxPoW) o;
         if (!transaction.equals(input.transaction)) return false;
         if (!hashBlock.equals(input.hashBlock)) return false;
-        if (!coinbaseBranch.equals(input.hashBlock)) return false;
-        if (!chainMerkleBranch.equals(input.hashBlock)) return false;
-        if (!parentBlockHeader.equals(input.hashBlock)) return false;
+        if (!coinbaseBranch.equals(input.coinbaseBranch)) return false;
+        if (!chainMerkleBranch.equals(input.chainMerkleBranch)) return false;
+        if (!parentBlockHeader.equals(input.parentBlockHeader)) return false;
         return getHash().equals(input.getHash());
     }
 
@@ -280,6 +280,15 @@ public class AuxPoW extends ChildMessage implements Serializable {
      */
     protected boolean checkProofOfWork(Sha256Hash hashAuxBlock,
         BigInteger target, boolean throwException) throws VerificationException {
+        if (!(params instanceof AltcoinNetworkParameters)) {
+            if (throwException) {
+                // Should be impossible
+                throw new VerificationException("Network parameters are not an instance of AltcoinNetworkParameters, AuxPoW support is not available.");
+            }
+            return false;
+        }
+        final AltcoinNetworkParameters altcoinParams = (AltcoinNetworkParameters) params;
+        
         if (0 != this.getCoinbaseBranch().getIndex()) {
             if (throwException) {
                 // I don't like the message, but it correlates with what's in the reference client.
@@ -288,13 +297,13 @@ public class AuxPoW extends ChildMessage implements Serializable {
             return false;
         }
 
-        /* if (!TestNet()
-            parentBlockHeader.getChainID() == ((AuxPoWNetworkParameters) params).getChainID()) {
+        if (!altcoinParams.isTestNet()
+            && getChainID(parentBlockHeader) == altcoinParams.getChainID()) {
             if (throwException) {
                 throw new VerificationException("Aux POW parent has our chain ID");
             }
             return false;
-        } */
+        }
 
         if (this.getChainMerkleBranch().size() > 30) {
             if (throwException) {
@@ -401,8 +410,7 @@ public class AuxPoW extends ChildMessage implements Serializable {
             return false;
         }
 
-        BigInteger h = ((AltcoinNetworkParameters) params)
-            .getBlockDifficultyHash(getParentBlockHeader())
+        BigInteger h = altcoinParams.getBlockDifficultyHash(getParentBlockHeader())
             .toBigInteger();
         if (h.compareTo(target) > 0) {
             // Proof of work check failed!
@@ -435,5 +443,12 @@ public class AuxPoW extends ChildMessage implements Serializable {
             }
         }
         return true;
+    }
+
+    /**
+     * Get the chain ID from a block header.
+     */
+    protected long getChainID(final Block blockHeader) {
+        return blockHeader.getVersion() / AltcoinBlock.BLOCK_VERSION_CHAIN_START;
     }
 }

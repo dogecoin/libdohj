@@ -44,7 +44,9 @@ import static org.bitcoinj.core.Utils.reverseBytes;
  */
 public class AltcoinBlock extends org.bitcoinj.core.Block {
 	/** Bit used to indicate that a block contains an AuxPoW section, where the network supports AuxPoW */
-    public static final int BLOCK_FLAG_AUXPOW = (1 << 8);
+    public static final int BLOCK_VERSION_CHAIN_START = (1 << 16);
+    public static final int BLOCK_VERSION_CHAIN_END = (1 << 30);
+    public static final int BLOCK_VERSION_AUXPOW = (1 << 8);
 
     private boolean auxpowParsed = false;
     private boolean auxpowBytesValid = false;

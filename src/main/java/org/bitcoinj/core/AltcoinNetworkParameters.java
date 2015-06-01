@@ -31,4 +31,6 @@ public interface AltcoinNetworkParameters {
      * SHA256 twice (Bitcoin standard) for proof of work.
      */
     Sha256Hash getBlockDifficultyHash(Block block);
+
+    public boolean isTestNet();
 }
