@@ -18,6 +18,7 @@
 
 package org.bitcoinj.core;
 
+import org.altcoinj.core.AltcoinNetworkParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -26,7 +26,6 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -97,7 +96,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
         cursor = offset + length;
     }
 
-    protected static int calcLength(byte[] buf, int offset) {
+    public static int calcLength(byte[] buf, int offset) {
         VarInt varint = new VarInt(buf, offset);
 
         return ((int) varint.value) * 4 + 4;

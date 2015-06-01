@@ -17,6 +17,7 @@
 
 package org.bitcoinj.core;
 
+import org.altcoinj.core.AltcoinNetworkParameters;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nullable;

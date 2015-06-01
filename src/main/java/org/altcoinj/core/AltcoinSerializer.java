@@ -3,7 +3,13 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.bitcoinj.core;
+package org.altcoinj.core;
+
+import org.bitcoinj.core.AltcoinBlock;
+import org.bitcoinj.core.BitcoinSerializer;
+import org.bitcoinj.core.Block;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.ProtocolException;
 
 /**
  *

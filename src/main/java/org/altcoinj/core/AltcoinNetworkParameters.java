@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.bitcoinj.core;
+package org.altcoinj.core;
+
+import org.bitcoinj.core.Block;
+import org.bitcoinj.core.Sha256Hash;
 
 /**
  *
