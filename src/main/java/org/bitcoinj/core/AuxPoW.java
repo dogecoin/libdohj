@@ -313,12 +313,11 @@ public class AuxPoW extends ChildMessage implements Serializable {
             return false;
         }
 
-        // Check that the chain merkle root is in the coinbase
         Sha256Hash nRootHash = getChainMerkleBranch().calculateMerkleRoot(hashAuxBlock);
         final byte[] vchRootHash = nRootHash.getBytes();
-        //std::reverse(vchRootHash.begin(), vchRootHash.end()); // correct endian// correct endian
 
-        // Check that we are in the parent block merkle tree
+        // Check that the coinbase transaction is in the merkle tree of the
+        // parent block header
         if (!getCoinbaseBranch().calculateMerkleRoot(getCoinbase().getHash()).equals(parentBlockHeader.getMerkleRoot())) {
             if (throwException) {
                 throw new VerificationException("Aux POW merkle root incorrect");
@@ -326,31 +325,35 @@ public class AuxPoW extends ChildMessage implements Serializable {
             return false;
         }
 
+        if (this.getCoinbase().getInputs().isEmpty()) {
+            throw new VerificationException("Coinbase transaction has no inputs");
+        }
+
+        // Check that the chain merkle root is in the coinbase
         final byte[] script = this.getCoinbase().getInput(0).getScriptBytes();
 
-        // Check that the same work is not submitted twice to our chain.
-        //
-        int pcHead = -1;
+        // Check that the same work is not submitted twice to our chain, by
+        // confirming that the child block hash is in the coinbase merkle tree
+        int pcHeader = -1;
         int pc = -1;
 
         for (int scriptIdx = 0; scriptIdx < script.length; scriptIdx++) {
             if (arrayMatch(script, scriptIdx, MERGED_MINING_HEADER)) {
                 // Enforce only one chain merkle root by checking that a single instance of the merged
                 // mining header exists just before.
-                if (pcHead >= 0) {
+                if (pcHeader >= 0) {
                     if (throwException) {
                         throw new VerificationException("Multiple merged mining headers in coinbase");
                     }
                     return false;
                 }
-                pcHead = scriptIdx;
-            }
-            if (arrayMatch(script, scriptIdx, vchRootHash)) {
+                pcHeader = scriptIdx;
+            } else if (arrayMatch(script, scriptIdx, vchRootHash)) {
                 pc = scriptIdx;
             }
         }
 
-        if (-1 == pcHead) {
+        if (-1 == pcHeader) {
             if (throwException) {
                 throw new VerificationException("MergedMiningHeader missing from parent coinbase");
             }
@@ -364,7 +367,7 @@ public class AuxPoW extends ChildMessage implements Serializable {
             return false;
         }
 
-        if (pcHead + MERGED_MINING_HEADER.length != pc) {
+        if (pcHeader + MERGED_MINING_HEADER.length != pc) {
             if (throwException) {
                 throw new VerificationException("Merged mining header is not just before chain merkle root");
             }
@@ -449,7 +452,22 @@ public class AuxPoW extends ChildMessage implements Serializable {
     /**
      * Get the chain ID from a block header.
      */
-    protected long getChainID(final Block blockHeader) {
+    public static long getChainID(final Block blockHeader) {
         return blockHeader.getVersion() / AltcoinBlock.BLOCK_VERSION_CHAIN_START;
+    }
+
+    /**
+     * Set the merkle branch used to connect the coinbase transaction to the
+     * parent block header.
+     */
+    public void setCoinbaseBranch(final MerkleBranch merkleBranch) {
+        this.coinbaseBranch = merkleBranch;
+    }
+
+    /**
+     * Set the parent chain block header.
+     */
+    public void setParentBlockHeader(final AltcoinBlock header) {
+        this.parentBlockHeader = header;
     }
 }

@@ -48,15 +48,15 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     // can properly keep track of optimal encoded size
     private transient int optimalEncodingMessageSize;
 
-    private List<Sha256Hash> branchHashes;
+    private List<Sha256Hash> hashes;
     private long index;
 
     public MerkleBranch(NetworkParameters params, @Nullable ChildMessage parent) {
         super(params);
         setParent(parent);
 
-		this.branchHashes = new ArrayList<Sha256Hash>();
-		this.index = 0;
+        this.hashes = new ArrayList<Sha256Hash>();
+        this.index = 0;
     }
 
     /**
@@ -86,7 +86,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
         super(params);
         setParent(parent);
 
-        this.branchHashes = hashes;
+        this.hashes = hashes;
         this.index = branchSideMask;
     }
 
@@ -111,19 +111,19 @@ public class MerkleBranch extends ChildMessage implements Serializable {
 
         final int hashCount = (int) readVarInt();
         optimalEncodingMessageSize += VarInt.sizeOf(hashCount);
-        branchHashes = new ArrayList<Sha256Hash>(hashCount);
+        hashes = new ArrayList<Sha256Hash>(hashCount);
         for (int hashIdx = 0; hashIdx < hashCount; hashIdx++) {
-                branchHashes.add(readHash());
+            hashes.add(readHash());
         }
         optimalEncodingMessageSize += 32 * hashCount;
-		index = readUint32();
+        setIndex(readUint32());
         optimalEncodingMessageSize += 4;
     }
 
     @Override
     protected void bitcoinSerializeToStream(OutputStream stream) throws IOException {
-        stream.write(new VarInt(branchHashes.size()).encode());
-        for (Sha256Hash hash: branchHashes) {
+        stream.write(new VarInt(hashes.size()).encode());
+        for (Sha256Hash hash: hashes) {
                 stream.write(Utils.reverseBytes(hash.getBytes()));
         }
         Utils.uint32ToByteStreamLE(index, stream);
@@ -137,7 +137,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
         byte[] target = reverseBytes(leaf.getBytes());
         long mask = index;
 
-        for (Sha256Hash hash: branchHashes) {
+        for (Sha256Hash hash: hashes) {
             target = (mask & 1) == 0
                 ? doubleDigestTwoBuffers(target, 0, 32, reverseBytes(hash.getBytes()), 0, 32)
                 : doubleDigestTwoBuffers(reverseBytes(hash.getBytes()), 0, 32, target, 0, 32);
@@ -150,7 +150,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
      * Get the hashes which make up this branch.
      */
     public List<Sha256Hash> getHashes() {
-        return Collections.unmodifiableList(this.branchHashes);
+        return Collections.unmodifiableList(this.hashes);
     }
 
     /**
@@ -163,10 +163,25 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     }
 
     /**
+     * @param hashes the hashes to set
+     */
+    public void setHashes(List<Sha256Hash> hashes) {
+        this.hashes = hashes;
+    }
+
+    /**
+     * Set the mask used to determine the sides in which hashes are applied.
+     */
+    public void setIndex(final long newIndex) {
+        assert newIndex >= 0;
+        this.index = newIndex;
+    }
+
+    /**
      * Get the number of hashes in this branch.
      */
     public int size() {
-        return branchHashes.size();
+        return hashes.size();
     }
 
     public int getOptimalEncodingMessageSize() {
@@ -214,7 +229,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
 
         MerkleBranch input = (MerkleBranch) o;
 
-        if (!branchHashes.equals(input.branchHashes)) return false;
+        if (!hashes.equals(input.hashes)) return false;
         if (index != input.index) return false;
 
         return true;
@@ -223,7 +238,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     @Override
     public int hashCode() {
         int result = 1;
-        result = 31 * result + branchHashes.hashCode();
+        result = 31 * result + hashes.hashCode();
         result = 31 * result + (int) index;
         return result;
     }
