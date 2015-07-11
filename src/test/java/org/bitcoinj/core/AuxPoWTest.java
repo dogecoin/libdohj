@@ -7,7 +7,6 @@ import org.altcoinj.params.DogecoinMainNetParams;
 import org.junit.Test;
 
 import static org.bitcoinj.core.Util.getBytes;
-import static org.bitcoinj.core.Utils.doubleDigestTwoBuffers;
 import static org.bitcoinj.core.Utils.reverseBytes;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -36,14 +35,16 @@ public class AuxPoWTest {
         byte[] auxpowAsBytes = getBytes(getClass().getResourceAsStream("auxpow_header.bin"));
         AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, params.getDefaultSerializer());
         MerkleBranch branch = auxpow.getCoinbaseBranch();
-        Sha256Hash expected = new Sha256Hash("089b911f5e471c0e1800f3384281ebec5b372fbb6f358790a92747ade271ccdf");
+        Sha256Hash expected = Sha256Hash.wrap("089b911f5e471c0e1800f3384281ebec5b372fbb6f358790a92747ade271ccdf");
 
         assertEquals(expected, auxpow.getCoinbase().getHash());
         assertEquals(3, auxpow.getCoinbaseBranch().size());
         assertEquals(6, auxpow.getChainMerkleBranch().size());
 
-        expected = new Sha256Hash("a22a9b01671d639fa6389f62ecf8ce69204c8ed41d5f1a745e0c5ba7116d5b4c");
+        expected = Sha256Hash.wrap("a22a9b01671d639fa6389f62ecf8ce69204c8ed41d5f1a745e0c5ba7116d5b4c");
         assertEquals(expected, auxpow.getParentBlockHeader().getHash());
+        expected = Sha256Hash.wrap("f29cd14243ed542d9a0b495efcb9feca1b208bb5b717dc5ac04f068d2fef595a");
+        assertEquals(expected, auxpow.getParentBlockHeader().getMerkleRoot());
     }
 
     /**
@@ -66,7 +67,7 @@ public class AuxPoWTest {
     public void checkAuxPoWHeader() throws Exception {
         byte[] auxpowAsBytes = getBytes(getClass().getResourceAsStream("auxpow_header.bin"));
         AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, params.getDefaultSerializer());
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
     
@@ -83,7 +84,7 @@ public class AuxPoWTest {
         auxpow.getCoinbaseBranch().setIndex(0x01);
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("AuxPow is not a generate");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -100,7 +101,7 @@ public class AuxPoWTest {
         auxpow.setParentBlockHeader((AltcoinBlock)block.cloneAsHeader());
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Aux POW parent has our chain ID");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -114,7 +115,7 @@ public class AuxPoWTest {
         auxpow.getChainMerkleBranch().setHashes(Arrays.asList(new Sha256Hash[32]));
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Aux POW chain merkle branch too long");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -132,7 +133,7 @@ public class AuxPoWTest {
         auxpow.getCoinbase().clearOutputs();
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Aux POW merkle root incorrect");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -152,7 +153,7 @@ public class AuxPoWTest {
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Coinbase transaction has no inputs");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -173,7 +174,7 @@ public class AuxPoWTest {
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("MergedMiningHeader missing from parent coinbase");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -198,7 +199,7 @@ public class AuxPoWTest {
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Multiple merged mining headers in coinbase");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -221,7 +222,7 @@ public class AuxPoWTest {
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Aux POW missing chain merkle root in parent coinbase");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -251,7 +252,7 @@ public class AuxPoWTest {
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Merged mining header is not just before chain merkle root");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -274,7 +275,7 @@ public class AuxPoWTest {
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Aux POW missing chain merkle tree size and nonce in parent coinbase");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -295,7 +296,7 @@ public class AuxPoWTest {
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Aux POW merkle branch size does not match parent coinbase");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -316,7 +317,7 @@ public class AuxPoWTest {
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Aux POW wrong index");
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
 
@@ -332,7 +333,7 @@ public class AuxPoWTest {
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Hash is higher than target: a22a9b01671d639fa6389f62ecf8ce69204c8ed41d5f1a745e0c5ba7116d5b4c vs 0");
         
-        auxpow.checkProofOfWork(new Sha256Hash("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
+        auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x00), true);
     }
 
@@ -347,10 +348,9 @@ public class AuxPoWTest {
         // The coinbase hash is the single leaf node in the merkle tree,
         // so to get the root we need to hash it with itself.
         // Note that bytes are reversed for hashing
-        final byte[] revisedMerkleRootBytes = doubleDigestTwoBuffers(
-                reverseBytes(revisedCoinbaseHash.getBytes()), 0, 32,
-                reverseBytes(revisedCoinbaseHash.getBytes()), 0, 32);
-        final Sha256Hash revisedMerkleRoot = new Sha256Hash(reverseBytes(revisedMerkleRootBytes));
+        final Sha256Hash revisedMerkleRoot = Sha256Hash.wrapReversed(
+            Sha256Hash.hashTwice(revisedCoinbaseHash.getReversedBytes(), 0, 32, revisedCoinbaseHash.getReversedBytes(), 0, 32)
+        );
         auxpow.getParentBlockHeader().setMerkleRoot(revisedMerkleRoot);
         auxpow.setCoinbaseBranch(new MerkleBranch(params, auxpow,
                 Collections.singletonList(revisedCoinbaseHash), MERKLE_ROOT_COINBASE_INDEX));

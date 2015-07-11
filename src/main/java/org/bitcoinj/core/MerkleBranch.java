@@ -17,17 +17,16 @@
 
 package org.bitcoinj.core;
 
-import static org.bitcoinj.core.Utils.doubleDigestTwoBuffers;
-import static org.bitcoinj.core.Utils.reverseBytes;
-
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import static org.bitcoinj.core.Sha256Hash.newDigest;
 
 /**
  * A Merkle branch contains the hashes from a leaf of a Merkle tree
@@ -134,16 +133,26 @@ public class MerkleBranch extends ChildMessage implements Serializable {
      * Used to verify that the given leaf and root are part of the same tree.
      */
     public Sha256Hash calculateMerkleRoot(final Sha256Hash leaf) {
-        byte[] target = reverseBytes(leaf.getBytes());
+        byte[] target = leaf.getReversedBytes();
         long mask = index;
+        MessageDigest digest = Sha256Hash.newDigest();
 
         for (Sha256Hash hash: hashes) {
-            target = (mask & 1) == 0
-                ? doubleDigestTwoBuffers(target, 0, 32, reverseBytes(hash.getBytes()), 0, 32)
-                : doubleDigestTwoBuffers(reverseBytes(hash.getBytes()), 0, 32, target, 0, 32);
+            digest.reset();
+            if ((mask & 1) == 0) { // 0 means it goes on the right
+                digest.update(target);
+                digest.update(hash.getReversedBytes());
+            } else {
+                digest.update(hash.getReversedBytes());
+                digest.update(target);
+            }
+            // Double-digest the values
+            target = digest.digest();
+            digest.reset();
+            target = digest.digest(target);
             mask >>= 1;
         }
-        return new Sha256Hash(reverseBytes(target));
+        return Sha256Hash.wrapReversed(target);
     }
 
     /**
