@@ -58,8 +58,8 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     private ScryptHash scryptHash;
 
     /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests. */
-    public AltcoinBlock(NetworkParameters params) {
-        super(params);
+    public AltcoinBlock(final NetworkParameters params, final long version) {
+        super(params, version);
     }
 
     /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests. */
@@ -156,37 +156,13 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     }
 
     @Override
-    void parse() throws ProtocolException {
-        parseHeader();
+    protected void parseTransactions(final int offset) {
         parseAuxPoW();
-        parseTransactions();
-        length = cursor - offset;
-    }
-
-    @Override
-    protected void parseTransactions() {
         if (null != this.auxpow) {
-            parseTransactions(HEADER_SIZE + auxpow.getMessageSize());
+            super.parseTransactions(offset + auxpow.getMessageSize());
         } else {
-            parseTransactions(HEADER_SIZE);
+            super.parseTransactions(offset);
         }
-    }
-
-    @Override
-    protected void parseLite() throws ProtocolException {
-        // Ignore the header since it has fixed length. If length is not provided we will have to
-        // invoke a light parse of transactions to calculate the length.
-        if (length == UNKNOWN_LENGTH) {
-            Preconditions.checkState(serializer.isParseLazyMode(),
-                    "Performing lite parse of block transaction as block was initialised from byte array " +
-                    "without providing length.  This should never need to happen.");
-            parseAuxPoW();
-            parseTransactions();
-            length = cursor - offset;
-        } else {
-            transactionBytesValid = !transactionsParsed || serializer.isParseRetainMode() && length > HEADER_SIZE;
-        }
-        headerBytesValid = !headerParsed || serializer.isParseRetainMode() && length >= HEADER_SIZE;
     }
 
     @Override
@@ -200,7 +176,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     /** Returns a copy of the block, but without any transactions. */
     @Override
     public Block cloneAsHeader() {
-        AltcoinBlock block = new AltcoinBlock(params);
+        AltcoinBlock block = new AltcoinBlock(params, getVersion());
         super.copyBitcoinHeaderTo(block);
         block.auxpow = auxpow;
         return block;

@@ -35,7 +35,7 @@ import java.util.*;
  * NetworkParameters for AuxPoW networks <b>must</b> implement AltcoinNetworkParameters
  * in order for AuxPoW to work.</p>
  */
-public class AuxPoW extends ChildMessage implements Serializable {
+public class AuxPoW extends ChildMessage {
 
     public static final byte[] MERGED_MINING_HEADER = new byte[] {
         (byte) 0xfa, (byte) 0xbe, "m".getBytes()[0], "m".getBytes()[0]
@@ -93,12 +93,6 @@ public class AuxPoW extends ChildMessage implements Serializable {
         super(params, payload, 0, parent, serializer, Message.UNKNOWN_LENGTH);
     }
 
-    @Override
-    protected void parseLite() throws ProtocolException {
-		length = calcLength(payload, offset);
-		cursor = offset + length;
-    }
-
     protected static int calcLength(byte[] buf, int offset) {
         VarInt varint;
         // jump past transaction
@@ -120,11 +114,7 @@ public class AuxPoW extends ChildMessage implements Serializable {
     }
 
     @Override
-    void parse() throws ProtocolException {
-
-        if (parsed)
-            return;
-
+    protected void parse() throws ProtocolException {
         cursor = offset;
         transaction = new Transaction(params, payload, cursor, this, serializer, Message.UNKNOWN_LENGTH);
         cursor += transaction.getOptimalEncodingMessageSize();
@@ -153,7 +143,6 @@ public class AuxPoW extends ChildMessage implements Serializable {
     public int getOptimalEncodingMessageSize() {
         if (optimalEncodingMessageSize != 0)
             return optimalEncodingMessageSize;
-        maybeParse();
         if (optimalEncodingMessageSize != 0)
             return optimalEncodingMessageSize;
         optimalEncodingMessageSize = getMessageSize();
@@ -209,16 +198,6 @@ public class AuxPoW extends ChildMessage implements Serializable {
     }
 
     /**
-     * Ensure object is fully parsed before invoking java serialization.  The backing byte array
-     * is transient so if the object has parseLazy = true and hasn't invoked checkParse yet
-     * then data will be lost during serialization.
-     */
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        maybeParse();
-        out.defaultWriteObject();
-    }
-
-    /**
      * Get the block header from the parent blockchain. The hash of the header
      * is the value which should match the difficulty target. Note that blocks are
      * not necessarily part of the parent blockchain, they simply must be valid
@@ -249,27 +228,6 @@ public class AuxPoW extends ChildMessage implements Serializable {
      */
     public MerkleBranch getCoinbaseBranch() {
         return coinbaseBranch;
-    }
-
-    /**
-     * <p>Checks the transaction contents for sanity, in ways that can be done in a standalone manner.
-     * Does <b>not</b> perform all checks on a transaction such as whether the inputs are already spent.
-     * Specifically this method verifies:</p>
-     *
-     * <ul>
-     *     <li>That there is at least one input and output.</li>
-     *     <li>That the serialized size is not larger than the max block size.</li>
-     *     <li>That no outputs have negative value.</li>
-     *     <li>That the outputs do not sum to larger than the max allowed quantity of coin in the system.</li>
-     *     <li>If the tx is a coinbase tx, the coinbase scriptSig size is within range. Otherwise that there are no
-     *     coinbase inputs in the tx.</li>
-     * </ul>
-     *
-     * @throws VerificationException
-     */
-    public void verify() throws VerificationException {
-        maybeParse();
-        // TODO: Verify the AuxPoW data
     }
 
     /**

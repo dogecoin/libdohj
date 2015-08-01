@@ -19,14 +19,11 @@ package org.bitcoinj.core;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import static org.bitcoinj.core.Sha256Hash.newDigest;
 
 /**
  * A Merkle branch contains the hashes from a leaf of a Merkle tree
@@ -37,7 +34,7 @@ import static org.bitcoinj.core.Sha256Hash.newDigest;
  * TODO: Has a lot of similarity to PartialMerkleTree, should attempt to merge
  * the two.
  */
-public class MerkleBranch extends ChildMessage implements Serializable {
+public class MerkleBranch extends ChildMessage {
     private static final long serialVersionUID = 2;
 
     // Merkle branches can be encoded in a way that will use more bytes than is optimal
@@ -89,12 +86,6 @@ public class MerkleBranch extends ChildMessage implements Serializable {
         this.index = branchSideMask;
     }
 
-    @Override
-    protected void parseLite() throws ProtocolException {
-        length = calcLength(payload, offset);
-        cursor = offset + length;
-    }
-
     public static int calcLength(byte[] buf, int offset) {
         VarInt varint = new VarInt(buf, offset);
 
@@ -102,10 +93,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     }
 
     @Override
-    void parse() throws ProtocolException {
-        if (parsed)
-            return;
-
+    protected void parse() throws ProtocolException {
         cursor = offset;
 
         final int hashCount = (int) readVarInt();
@@ -117,6 +105,7 @@ public class MerkleBranch extends ChildMessage implements Serializable {
         optimalEncodingMessageSize += 32 * hashCount;
         setIndex(readUint32());
         optimalEncodingMessageSize += 4;
+        length = cursor - offset;
     }
 
     @Override
@@ -196,7 +185,6 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     public int getOptimalEncodingMessageSize() {
         if (optimalEncodingMessageSize != 0)
             return optimalEncodingMessageSize;
-        maybeParse();
         if (optimalEncodingMessageSize != 0)
             return optimalEncodingMessageSize;
         optimalEncodingMessageSize = getMessageSize();
@@ -209,26 +197,6 @@ public class MerkleBranch extends ChildMessage implements Serializable {
     @Override
     public String toString() {
         return "Merkle branch";
-    }
-
-    /**
-     * Ensure object is fully parsed before invoking java serialization.  The backing byte array
-     * is transient so if the object has parseLazy = true and hasn't invoked checkParse yet
-     * then data will be lost during serialization.
-     */
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        maybeParse();
-        out.defaultWriteObject();
-    }
-
-    /**
-     * Should check that the merkle branch side bits are not wider than the
-	 * provided hashes.
-     * @throws VerificationException If the branch is invalid.
-     */
-    public void verify() throws VerificationException {
-        maybeParse();
-		// TODO: Check the flags make sense for the inputs
     }
 
     @Override

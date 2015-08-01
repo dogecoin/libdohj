@@ -17,8 +17,8 @@ import org.bitcoinj.core.ProtocolException;
  */
 public class AltcoinSerializer extends BitcoinSerializer {
 
-    public AltcoinSerializer(NetworkParameters params, boolean parseLazy, boolean parseRetain) {
-        super(params, parseLazy, parseRetain);
+    public AltcoinSerializer(NetworkParameters params, boolean parseRetain) {
+        super(params, parseRetain);
     }
 
     @Override

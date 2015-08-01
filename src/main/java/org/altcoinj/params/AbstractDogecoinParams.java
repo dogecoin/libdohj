@@ -109,7 +109,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     }
 
     private static AltcoinBlock createGenesis(NetworkParameters params) {
-        AltcoinBlock genesisBlock = new AltcoinBlock(params);
+        AltcoinBlock genesisBlock = new AltcoinBlock(params, Block.BLOCK_VERSION_GENESIS);
         Transaction t = new Transaction(params);
         try {
             byte[] bytes = Utils.HEX.decode
@@ -305,8 +305,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     }
 
     @Override
-    public AltcoinSerializer getSerializer(boolean parseLazy, boolean parseRetain) {
-        return new AltcoinSerializer(this, parseLazy, parseRetain);
+    public AltcoinSerializer getSerializer(boolean parseRetain) {
+        return new AltcoinSerializer(this, parseRetain);
     }
 
     @Override
