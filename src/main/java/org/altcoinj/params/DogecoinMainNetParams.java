@@ -78,8 +78,9 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
 
         dnsSeeds = new String[] {
                 "seed.dogecoin.com",
-                "seed.mophides.com",
-                "seed.dogechain.info",
+                "seed.multidoge.org",
+                "seed2.multidoge.org",
+                "seed.doger.dogecoin.com"
         };
     }
 
