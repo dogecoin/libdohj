@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package org.altcoinj.params;
+package org.libdohj.params;
 
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import org.bitcoinj.core.AltcoinBlock;
 
-import org.altcoinj.core.AltcoinNetworkParameters;
+import org.libdohj.core.AltcoinNetworkParameters;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Coin;
 import static org.bitcoinj.core.Coin.COIN;
@@ -35,7 +35,7 @@ import org.bitcoinj.utils.MonetaryFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.altcoinj.core.AltcoinSerializer;
+import org.libdohj.core.AltcoinSerializer;
 import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.StoredBlock;
 import org.bitcoinj.core.Transaction;

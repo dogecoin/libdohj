@@ -1,6 +1,5 @@
 /**
- * Copyright 2011 Google Inc.
- * Copyright 2014 Andreas Schildbach
+ * Copyright 2015 Ross Nicoll
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.altcoinj.core;
+package org.libdohj.core;
 
-import com.lambdaworks.crypto.SCrypt;
-import java.security.GeneralSecurityException;
+import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.Sha256Hash;
 
 /**
- *
+ * Scrypt hash. Currently extends Sha256Hash (so no real type safety is provided),
+ * but in time the two classes should have a common superclass rather than one
+ * extending the other directly.
  */
-public class Utils {
-    /**
-     * Calculates the Scrypt hash of the given byte range.
-     * The resulting hash is in small endian form.
-     */
-    public static byte[] scryptDigest(byte[] input) throws GeneralSecurityException {
-        return SCrypt.scrypt(input, input, 1024, 1, 1, 32);
+public class ScryptHash extends Sha256Hash {
+
+    public ScryptHash(byte[] rawHashBytes) {
+        super(rawHashBytes);
+    }
+    
+    public ScryptHash(String hexString) {
+        super(hexString);
     }
 }

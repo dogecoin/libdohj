@@ -17,7 +17,7 @@
 
 package org.bitcoinj.core;
 
-import org.altcoinj.core.AltcoinNetworkParameters;
+import org.libdohj.core.AltcoinNetworkParameters;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nullable;
@@ -28,8 +28,8 @@ import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.util.List;
 
-import org.altcoinj.core.ScryptHash;
-import static org.altcoinj.core.Utils.scryptDigest;
+import org.libdohj.core.ScryptHash;
+import static org.libdohj.core.Utils.scryptDigest;
 
 import static org.bitcoinj.core.Utils.reverseBytes;
 

@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package org.altcoinj.params;
+package org.libdohj.params;
 
-import org.altcoinj.core.ScryptHash;
+import org.libdohj.core.ScryptHash;
 
 import static com.google.common.base.Preconditions.checkState;
 

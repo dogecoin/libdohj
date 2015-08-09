@@ -5,9 +5,9 @@
  */
 package org.bitcoinj.core;
 
-import org.altcoinj.core.AltcoinSerializer;
+import org.libdohj.core.AltcoinSerializer;
 import java.io.IOException;
-import org.altcoinj.params.DogecoinMainNetParams;
+import org.libdohj.params.DogecoinMainNetParams;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;

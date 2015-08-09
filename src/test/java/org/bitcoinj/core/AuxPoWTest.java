@@ -2,8 +2,8 @@ package org.bitcoinj.core;
 
 import java.util.Arrays;
 import java.util.Collections;
-import org.altcoinj.core.AltcoinSerializer;
-import org.altcoinj.params.DogecoinMainNetParams;
+import org.libdohj.core.AltcoinSerializer;
+import org.libdohj.params.DogecoinMainNetParams;
 import org.junit.Test;
 
 import static org.bitcoinj.core.Util.getBytes;

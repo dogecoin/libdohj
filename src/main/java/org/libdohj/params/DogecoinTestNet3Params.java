@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.altcoinj.params;
+package org.libdohj.params;
 
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Utils;

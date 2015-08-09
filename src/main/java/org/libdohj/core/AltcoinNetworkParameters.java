@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015 Ross Nicoll
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,23 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.altcoinj.core;
+package org.libdohj.core;
 
-import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Sha256Hash;
 
 /**
- * Scrypt hash. Currently extends Sha256Hash (so no real type safety is provided),
- * but in time the two classes should have a common superclass rather than one
- * extending the other directly.
+ *
+ * @author jrn
  */
-public class ScryptHash extends Sha256Hash {
+public interface AltcoinNetworkParameters {
 
-    public ScryptHash(byte[] rawHashBytes) {
-        super(rawHashBytes);
-    }
-    
-    public ScryptHash(String hexString) {
-        super(hexString);
-    }
+    boolean isAuxPoWBlockVersion(long version);
+
+    int getChainID();
+
+    /**
+     * Get the hash for the given block, for comparing against target difficulty.
+     * This provides an extension hook for networks which use a hash other than
+     * SHA256 twice (Bitcoin standard) for proof of work.
+     */
+    Sha256Hash getBlockDifficultyHash(Block block);
+
+    public boolean isTestNet();
 }

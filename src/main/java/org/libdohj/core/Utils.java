@@ -1,5 +1,6 @@
-/*
- * Copyright 2015 Ross Nicoll
+/**
+ * Copyright 2011 Google Inc.
+ * Copyright 2014 Andreas Schildbach
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,27 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.altcoinj.core;
+package org.libdohj.core;
 
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Sha256Hash;
+import com.lambdaworks.crypto.SCrypt;
+import java.security.GeneralSecurityException;
 
 /**
  *
- * @author jrn
  */
-public interface AltcoinNetworkParameters {
-
-    boolean isAuxPoWBlockVersion(long version);
-
-    int getChainID();
-
+public class Utils {
     /**
-     * Get the hash for the given block, for comparing against target difficulty.
-     * This provides an extension hook for networks which use a hash other than
-     * SHA256 twice (Bitcoin standard) for proof of work.
+     * Calculates the Scrypt hash of the given byte range.
+     * The resulting hash is in small endian form.
      */
-    Sha256Hash getBlockDifficultyHash(Block block);
-
-    public boolean isTestNet();
+    public static byte[] scryptDigest(byte[] input) throws GeneralSecurityException {
+        return SCrypt.scrypt(input, input, 1024, 1, 1, 32);
+    }
 }

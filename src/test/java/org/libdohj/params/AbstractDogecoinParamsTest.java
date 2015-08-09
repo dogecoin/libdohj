@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.altcoinj.params;
+package org.libdohj.params;
 
+import org.libdohj.params.AbstractDogecoinParams;
+import org.libdohj.params.DogecoinMainNetParams;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
