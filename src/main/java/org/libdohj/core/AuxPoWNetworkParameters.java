@@ -15,20 +15,13 @@
  */
 package org.libdohj.core;
 
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Sha256Hash;
-
 /**
  *
  * @author Ross Nicoll
  */
-public interface AltcoinNetworkParameters {
-    /**
-     * Get the hash for the given block, for comparing against target difficulty.
-     * This provides an extension hook for networks which use a hash other than
-     * SHA256 twice (Bitcoin standard) for proof of work.
-     */
-    Sha256Hash getBlockDifficultyHash(Block block);
+public interface AuxPoWNetworkParameters extends AltcoinNetworkParameters {
 
-    public boolean isTestNet();
+    boolean isAuxPoWBlockVersion(long version);
+
+    int getChainID();
 }

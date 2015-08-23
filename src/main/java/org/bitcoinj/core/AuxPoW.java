@@ -18,7 +18,7 @@
 
 package org.bitcoinj.core;
 
-import org.libdohj.core.AltcoinNetworkParameters;
+import org.libdohj.core.AuxPoWNetworkParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -239,14 +239,14 @@ public class AuxPoW extends ChildMessage {
      */
     protected boolean checkProofOfWork(Sha256Hash hashAuxBlock,
         BigInteger target, boolean throwException) throws VerificationException {
-        if (!(params instanceof AltcoinNetworkParameters)) {
+        if (!(params instanceof AuxPoWNetworkParameters)) {
             if (throwException) {
                 // Should be impossible
-                throw new VerificationException("Network parameters are not an instance of AltcoinNetworkParameters, AuxPoW support is not available.");
+                throw new VerificationException("Network parameters are not an instance of AuxPoWNetworkParameters, AuxPoW support is not available.");
             }
             return false;
         }
-        final AltcoinNetworkParameters altcoinParams = (AltcoinNetworkParameters) params;
+        final AuxPoWNetworkParameters altcoinParams = (AuxPoWNetworkParameters) params;
         
         if (0 != this.getCoinbaseBranch().getIndex()) {
             if (throwException) {
@@ -257,7 +257,7 @@ public class AuxPoW extends ChildMessage {
         }
 
         if (!altcoinParams.isTestNet()
-            && getChainID(parentBlockHeader) == altcoinParams.getChainID()) {
+            && parentBlockHeader.getChainID() == altcoinParams.getChainID()) {
             if (throwException) {
                 throw new VerificationException("Aux POW parent has our chain ID");
             }
@@ -362,7 +362,7 @@ public class AuxPoW extends ChildMessage {
         // for the same slot.
         long rand = nonce;
         rand = rand * 1103515245 + 12345;
-        rand += ((AltcoinNetworkParameters) params).getChainID();
+        rand += ((AuxPoWNetworkParameters) params).getChainID();
         rand = rand * 1103515245 + 12345;
 
         if (getChainMerkleBranch().getIndex() != (rand % branchSize)) {
@@ -405,13 +405,6 @@ public class AuxPoW extends ChildMessage {
             }
         }
         return true;
-    }
-
-    /**
-     * Get the chain ID from a block header.
-     */
-    public static long getChainID(final Block blockHeader) {
-        return blockHeader.getVersion() / AltcoinBlock.BLOCK_VERSION_CHAIN_START;
     }
 
     /**

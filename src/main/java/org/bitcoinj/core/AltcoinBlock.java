@@ -26,12 +26,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
+import java.util.BitSet;
 import java.util.List;
 
 import org.libdohj.core.ScryptHash;
 import static org.libdohj.core.Utils.scryptDigest;
 
 import static org.bitcoinj.core.Utils.reverseBytes;
+import org.libdohj.core.AuxPoWNetworkParameters;
 
 /**
  * <p>A block is a group of transactions, and is one of the fundamental data structures of the Bitcoin system.
@@ -44,16 +46,17 @@ import static org.bitcoinj.core.Utils.reverseBytes;
  * specifically using {@link Peer#getBlock(Sha256Hash)}, or grab one from a downloaded {@link BlockChain}.
  */
 public class AltcoinBlock extends org.bitcoinj.core.Block {
-	/** Bit used to indicate that a block contains an AuxPoW section, where the network supports AuxPoW */
-    public static final int BLOCK_VERSION_CHAIN_START = (1 << 16);
-    public static final int BLOCK_VERSION_CHAIN_END = (1 << 30);
-    public static final int BLOCK_VERSION_AUXPOW = (1 << 8);
-
     private boolean auxpowParsed = false;
     private boolean auxpowBytesValid = false;
 
     /** AuxPoW header element, if applicable. */
     @Nullable private AuxPoW auxpow;
+
+    /**
+     * Whether the chain this block belongs to support AuxPoW, used to avoid
+     * repeated instanceof checks. Initialised in parseTransactions()
+     */
+    private boolean auxpowChain = false;
 
     private ScryptHash scryptHash;
 
@@ -115,7 +118,6 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     }
 
     public AuxPoW getAuxPoW() {
-        // TODO: maybeParseAuxPoW();
         return this.auxpow;
     }
 
@@ -136,14 +138,65 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         return getScryptHash().toString();
     }
 
+    /**
+     * Get the chain ID (upper 16 bits) from an AuxPoW version number.
+     */
+    public static long getChainID(final long rawVersion) {
+        return rawVersion >> 16;
+    }
+
+    /**
+     * Return chain ID from block version of an AuxPoW-enabled chain.
+     */
+    public long getChainID() {
+        return getChainID(this.getRawVersion());
+    }
+
+    /**
+     * Return flags from block version of an AuxPoW-enabled chain.
+     * 
+     * @return flags as a bitset. 
+     */
+    public BitSet getVersionFlags() {
+        return BitSet.valueOf(new long[] {(this.getRawVersion() & 0xff00) >> 8});
+    }
+
+    /**
+     * Return block version without applying any filtering (i.e. for AuxPoW blocks
+     * which structure version differently to pack in additional data).
+     */
+    public final long getRawVersion() {
+        return super.getVersion();
+    }
+
+    /**
+     * Get the base version (i.e. Bitcoin-like version number) out of a packed
+     * AuxPoW version number (i.e. one that contains chain ID and feature flags).
+     */
+    public static long getBaseVersion(final long rawVersion) {
+        return rawVersion & 0xff;
+    }
+
+    @Override
+    public long getVersion() {
+        // TODO: Can we cache the individual parts on parse?
+        if (this.params instanceof AltcoinNetworkParameters) {
+            // AuxPoW networks use the higher block version bits for flags and
+            // chain ID.
+            return getBaseVersion(super.getVersion());
+        } else {
+            return super.getVersion();
+        }
+    }
+
     protected void parseAuxPoW() throws ProtocolException {
         if (this.auxpowParsed)
             return;
 
         this.auxpow = null;
-        if (this.params instanceof AltcoinNetworkParameters) {
-            final AltcoinNetworkParameters altcoinParams = (AltcoinNetworkParameters)this.params;
-            if (altcoinParams.isAuxPoWBlockVersion(this.getVersion())) {
+        if (this.auxpowChain) {
+            final AuxPoWNetworkParameters auxpowParams = (AuxPoWNetworkParameters)this.params;
+            if (auxpowParams.isAuxPoWBlockVersion(this.getRawVersion())) {
                 // The following is used in dogecoinj, but I don't think we necessarily need it
                 // payload.length >= 160) { // We have at least 2 headers in an Aux block. Workaround for StoredBlocks
                 this.auxpow = new AuxPoW(params, payload, cursor, this, serializer);
@@ -157,6 +210,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
 
     @Override
     protected void parseTransactions(final int offset) {
+        this.auxpowChain = params instanceof AuxPoWNetworkParameters;
         parseAuxPoW();
         if (null != this.auxpow) {
             super.parseTransactions(offset + auxpow.getMessageSize());
@@ -176,7 +230,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     /** Returns a copy of the block, but without any transactions. */
     @Override
     public Block cloneAsHeader() {
-        AltcoinBlock block = new AltcoinBlock(params, getVersion());
+        AltcoinBlock block = new AltcoinBlock(params, getRawVersion());
         super.copyBitcoinHeaderTo(block);
         block.auxpow = auxpow;
         return block;
@@ -187,8 +241,8 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         if (params instanceof AltcoinNetworkParameters) {
             BigInteger target = getDifficultyTargetAsInteger();
         
-            final AltcoinNetworkParameters altParams = (AltcoinNetworkParameters)auxpow;
-            if (altParams.isAuxPoWBlockVersion(getVersion()) && null != auxpow) {
+            final AuxPoWNetworkParameters altParams = (AuxPoWNetworkParameters)auxpow;
+            if (altParams.isAuxPoWBlockVersion(getRawVersion()) && null != auxpow) {
                 return auxpow.checkProofOfWork(this.getHash(), target, throwException);
             }
 

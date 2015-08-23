@@ -12,6 +12,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -25,6 +26,24 @@ public class DogecoinBlockTest {
     @Before
     public void setUp() throws Exception {
         Context context = new Context(params);
+    }
+
+    @Test
+    public void shouldExtractChainID() {
+        final long baseVersion = 2;
+        final long flags = 1;
+        final long chainID = 98;
+        final long auxpowVersion = (chainID << 16) | (flags << 8) | baseVersion;
+        assertEquals(chainID, AltcoinBlock.getChainID(auxpowVersion));
+    }
+
+    @Test
+    public void shouldExtractBaseVersion() {
+        final long baseVersion = 2;
+        final long flags = 1;
+        final long chainID = 98;
+        final long auxpowVersion = (chainID << 16) | (flags << 8) | baseVersion;
+        assertEquals(baseVersion, AltcoinBlock.getBaseVersion(auxpowVersion));
     }
 
     @Test
@@ -65,6 +84,12 @@ public class DogecoinBlockTest {
         final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
         assertEquals("60323982f9c5ff1b5a954eac9dc1269352835f47c2c5222691d80f0d50dcf053", block.getHashAsString());
         assertEquals(0, block.getNonce());
+
+        // Check block version values
+        assertEquals(2, block.getVersion());
+        assertEquals(98, block.getChainID());
+        assertTrue(block.getVersionFlags().get(0));
+
         final AuxPoW auxpow = block.getAuxPoW();
         assertNotNull(auxpow);
         final Transaction auxpowCoinbase = auxpow.getCoinbase();
@@ -75,18 +100,18 @@ public class DogecoinBlockTest {
 
         final MerkleBranch blockchainMerkleBranch = auxpow.getChainMerkleBranch();
         Sha256Hash[] expected = new Sha256Hash[] {
-            new Sha256Hash("b541c848bc001d07d2bdf8643abab61d2c6ae50d5b2495815339a4b30703a46f"),
-            new Sha256Hash("78d6abe48cee514cf3496f4042039acb7e27616dcfc5de926ff0d6c7e5987be7"),
-            new Sha256Hash("a0469413ce64d67c43902d54ee3a380eff12ded22ca11cbd3842e15d48298103")
+            Sha256Hash.wrap("b541c848bc001d07d2bdf8643abab61d2c6ae50d5b2495815339a4b30703a46f"),
+            Sha256Hash.wrap("78d6abe48cee514cf3496f4042039acb7e27616dcfc5de926ff0d6c7e5987be7"),
+            Sha256Hash.wrap("a0469413ce64d67c43902d54ee3a380eff12ded22ca11cbd3842e15d48298103")
         };
 
         assertArrayEquals(expected, blockchainMerkleBranch.getHashes().toArray(new Sha256Hash[blockchainMerkleBranch.size()]));
 
         final MerkleBranch coinbaseMerkleBranch = auxpow.getCoinbaseBranch();
         expected = new Sha256Hash[] {
-            new Sha256Hash("cd3947cd5a0c26fde01b05a3aa3d7a38717be6ae11d27239365024db36a679a9"),
-            new Sha256Hash("48f9e8fef3411944e27f49ec804462c9e124dca0954c71c8560e8a9dd218a452"),
-            new Sha256Hash("d11293660392e7c51f69477a6130237c72ecee2d0c1d3dc815841734c370331a")
+            Sha256Hash.wrap("cd3947cd5a0c26fde01b05a3aa3d7a38717be6ae11d27239365024db36a679a9"),
+            Sha256Hash.wrap("48f9e8fef3411944e27f49ec804462c9e124dca0954c71c8560e8a9dd218a452"),
+            Sha256Hash.wrap("d11293660392e7c51f69477a6130237c72ecee2d0c1d3dc815841734c370331a")
         };
         assertArrayEquals(expected, coinbaseMerkleBranch.getHashes().toArray(new Sha256Hash[coinbaseMerkleBranch.size()]));
 

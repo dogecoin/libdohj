@@ -35,18 +35,19 @@ import org.bitcoinj.utils.MonetaryFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.libdohj.core.AltcoinSerializer;
 import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.StoredBlock;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.core.Utils;
+import org.libdohj.core.AltcoinSerializer;
+import org.libdohj.core.AuxPoWNetworkParameters;
 
 /**
  * Parameters for the main Dogecoin production network on which people trade goods and services.
  */
-public abstract class AbstractDogecoinParams extends NetworkParameters implements AltcoinNetworkParameters {
+public abstract class AbstractDogecoinParams extends NetworkParameters implements AuxPoWNetworkParameters {
     /** Standard format for the DOGE denomination. */
     public static final MonetaryFormat DOGE;
     /** Standard format for the mDOGE denomination. */
@@ -69,9 +70,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     /** Currency code for base 1/100,000,000 Dogecoin. */
     public static final String CODE_KOINU = "Koinu";
 
-    public static final int BLOCK_VERSION_DEFAULT = 0x00000002;
-    public static final int BLOCK_VERSION_AUXPOW = 0x00620002;
-    public static final int BLOCK_VERSION_FLAG_AUXPOW = 0x00000100;
+    private static final int BLOCK_MIN_VERSION_AUXPOW = 0x00620002;
+    private static final int BLOCK_VERSION_FLAG_AUXPOW = 0x00000100;
 
     static {
         DOGE = MonetaryFormat.BTC.noCode()
@@ -311,7 +311,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     @Override
     public boolean isAuxPoWBlockVersion(long version) {
-        return version >= BLOCK_VERSION_AUXPOW
+        return version >= BLOCK_MIN_VERSION_AUXPOW
             && (version & BLOCK_VERSION_FLAG_AUXPOW) > 0;
     }
 }

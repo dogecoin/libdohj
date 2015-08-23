@@ -16,7 +16,7 @@ public class ConvertAddress {
     public static void main(final String[] argv) throws AddressFormatException {
         final NetworkParameters mainParams = MainNetParams.get();
         final NetworkParameters dogeParams = DogecoinMainNetParams.get();
-        final Address address = Address.fromBase58(mainParams, "1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L");
+        final Address address = Address.fromBase58(mainParams, "175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W");
         final Address newAddress = new Address(dogeParams, 30, address.getHash160());
 
         System.out.println(newAddress.toBase58());

@@ -2,17 +2,20 @@ package org.bitcoinj.core;
 
 import java.util.Arrays;
 import java.util.Collections;
+
 import org.libdohj.core.AltcoinSerializer;
+import org.libdohj.core.AuxPoWNetworkParameters;
 import org.libdohj.params.DogecoinMainNetParams;
-import org.junit.Test;
 
 import static org.bitcoinj.core.Util.getBytes;
 import static org.bitcoinj.core.Utils.reverseBytes;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 /**
@@ -97,7 +100,9 @@ public class AuxPoWTest {
         byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block371337.bin"));
         AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
         final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
+        assertEquals(98, block.getChainID());
         final AuxPoW auxpow = block.getAuxPoW();
+        assertNotNull(auxpow);
         auxpow.setParentBlockHeader((AltcoinBlock)block.cloneAsHeader());
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
         expectedEx.expectMessage("Aux POW parent has our chain ID");
