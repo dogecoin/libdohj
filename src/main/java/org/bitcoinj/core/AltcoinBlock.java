@@ -241,7 +241,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         if (params instanceof AltcoinNetworkParameters) {
             BigInteger target = getDifficultyTargetAsInteger();
         
-            final AuxPoWNetworkParameters altParams = (AuxPoWNetworkParameters)auxpow;
+            final AuxPoWNetworkParameters altParams = (AuxPoWNetworkParameters)this.params;
             if (altParams.isAuxPoWBlockVersion(getRawVersion()) && null != auxpow) {
                 return auxpow.checkProofOfWork(this.getHash(), target, throwException);
             }

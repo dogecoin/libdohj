@@ -117,4 +117,15 @@ public class DogecoinBlockTest {
 
         assertEquals(6, block.getTransactions().size());
     }
+
+    /**
+     * Confirm that checking proof of work on an AuxPoW block works. 
+     */
+    @Test
+    public void shouldCheckAuxPoWProofOfWork() throws IOException {
+        byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block371337.bin"));
+        AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
+        final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
+        assertEquals(true, block.checkProofOfWork(true));
+    }
 }
