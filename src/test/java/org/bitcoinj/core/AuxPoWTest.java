@@ -1,7 +1,10 @@
 package org.bitcoinj.core;
 
+import java.io.OutputStream;
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
+import static org.bitcoinj.core.AuxPoW.MERGED_MINING_HEADER;
 
 import org.libdohj.core.AltcoinSerializer;
 import org.libdohj.core.AuxPoWNetworkParameters;
@@ -13,6 +16,7 @@ import static org.bitcoinj.core.Utils.reverseBytes;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -359,5 +363,33 @@ public class AuxPoWTest {
         auxpow.getParentBlockHeader().setMerkleRoot(revisedMerkleRoot);
         auxpow.setCoinbaseBranch(new MerkleBranch(params, auxpow,
                 Collections.singletonList(revisedCoinbaseHash), MERKLE_ROOT_COINBASE_INDEX));
+    }
+
+    /**
+     * Test extraction of a nonce value from the coinbase transaction pubscript.
+     * This test primarily exists to ensure that byte order is correct, and that
+     * a nonce value above Integer.MAX_VALUE is still returned as a positive
+     * integer.
+     */
+    @Test
+    public void testGetNonceFromScript() {
+        final byte[] script = Utils.HEX.decode("03251d0de4b883e5bda9e7a59ee4bb99e9b1bcfabe6d6dc6c83f297ee373df0d826f3148f218e4e4eb349e0bba715ad793ccc2d6beb6df40000000f09f909f4d696e65642062792079616e6779616e676368656e00000000000000000000000000000000");
+        final int pc = 55;
+        final long expResult = 0x9f909ff0L;
+        final long result = AuxPoW.getNonceFromScript(script, pc);
+        assertEquals(expResult, result);
+    }
+
+    /**
+     * Test of getExpectedIndex method, of class AuxPoW.
+     */
+    @Test
+    public void testGetExpectedIndex() {
+        final long nonce = 0x9f909ff0L;
+        final int chainId = 98;
+        final int merkleHeight = 6;
+        final int expResult = 40;
+        final int result = AuxPoW.getExpectedIndex(nonce, chainId, merkleHeight);
+        assertEquals(expResult, result);
     }
 }

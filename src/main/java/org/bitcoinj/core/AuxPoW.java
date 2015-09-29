@@ -351,21 +351,9 @@ public class AuxPoW extends ChildMessage {
             return false;
         }
 
-        byte[] nonceBytes = Utils.reverseBytes(Arrays.copyOfRange(script, pc + 4, pc + 8));
-        int nonce = ByteBuffer.wrap(nonceBytes).getInt();
+        long nonce = getNonceFromScript(script, pc);
 
-        // Choose a pseudo-random slot in the chain merkle tree
-        // but have it be fixed for a size/nonce/chain combination.
-        //
-        // This prevents the same work from being used twice for the
-        // same chain while reducing the chance that two chains clash
-        // for the same slot.
-        long rand = nonce;
-        rand = rand * 1103515245 + 12345;
-        rand += ((AuxPoWNetworkParameters) params).getChainID();
-        rand = rand * 1103515245 + 12345;
-
-        if (getChainMerkleBranch().getIndex() != (rand % branchSize)) {
+        if (getChainMerkleBranch().getIndex() != getExpectedIndex(nonce, ((AuxPoWNetworkParameters) params).getChainID(), getChainMerkleBranch().size())) {
             if (throwException) {
                 throw new VerificationException("Aux POW wrong index");
             }
@@ -386,6 +374,42 @@ public class AuxPoW extends ChildMessage {
         return true;
     }
 
+    /**
+     * Get the nonce value from the coinbase transaction script.
+     *
+     * @param script the transaction script to extract the nonce from.
+     * @param pc offset of the merkle branch size within the script (this is 4
+     * bytes before the start of the nonce value). Range checks should be
+     * performed before calling this method.
+     * @return the nonce value.
+     */
+    protected static long getNonceFromScript(final byte[] script, int pc) {
+        // Note that the nonce value is packed as platform order (typically
+        // little-endian) so we have to convert to big-endian for Java
+        final byte[] nonceBytes = Utils.reverseBytes(Arrays.copyOfRange(script, pc + 4, pc + 8));
+
+        return ByteBuffer.wrap(nonceBytes).getInt() & 0xffffffffl;
+    }
+
+    /**
+     * Get the expected index of the slot within the chain merkle tree.
+     *
+     * This prevents the same work from being used twice for the
+     * same chain while reducing the chance that two chains clash
+     * for the same slot.
+     */
+    protected static int getExpectedIndex(final long nonce, final int chainId, final int merkleHeight) {
+        // Choose a pseudo-random slot in the chain merkle tree
+        // but have it be fixed for a size/nonce/chain combination.
+
+        long rand = nonce;
+        rand = rand * 1103515245 + 12345;
+        rand += chainId;
+        rand = rand * 1103515245 + 12345;
+
+        return (int) (rand % (1L << merkleHeight));
+    }
+
     public Transaction getTransaction() {
         return transaction;
     }
@@ -398,7 +422,7 @@ public class AuxPoW extends ChildMessage {
      * @param subArray the shorter array to test for presence in the longer array.
      * @return true if the shorter array is present at the offset, false otherwise.
      */
-    private boolean arrayMatch(byte[] script, int offset, byte[] subArray) {
+    static boolean arrayMatch(byte[] script, int offset, byte[] subArray) {
         for (int matchIdx = 0; matchIdx + offset < script.length && matchIdx < subArray.length; matchIdx++) {
             if (script[offset + matchIdx] != subArray[matchIdx]) {
                 return false;

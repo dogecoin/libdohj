@@ -7,6 +7,7 @@ package org.bitcoinj.core;
 
 import org.libdohj.core.AltcoinSerializer;
 import java.io.IOException;
+import java.math.BigInteger;
 import org.libdohj.params.DogecoinMainNetParams;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -116,6 +117,35 @@ public class DogecoinBlockTest {
         assertArrayEquals(expected, coinbaseMerkleBranch.getHashes().toArray(new Sha256Hash[coinbaseMerkleBranch.size()]));
 
         assertEquals(6, block.getTransactions().size());
+
+        assertTrue(auxpow.checkProofOfWork(block.getHash(), block.getDifficultyTargetAsInteger(), false));
+    }
+
+    /**
+     * Confirm parsing of block with a nonce value above Integer.MAX_VALUE.
+     * See https://github.com/rnicoll/libdohj/issues/5
+     * 
+     * @throws IOException 
+     */
+    @Test
+    public void shouldParseBlock894863() throws IOException {
+        byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block894863.bin"));
+        AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
+        final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
+        assertEquals("93a207e6d227f4d60ee64fad584b47255f654b0b6378d78e774123dd66f4fef9", block.getHashAsString());
+        assertEquals(0, block.getNonce());
+
+        // Check block version values
+        assertEquals(2, block.getVersion());
+        assertEquals(98, block.getChainID());
+        assertTrue(block.getVersionFlags().get(0));
+
+        final AuxPoW auxpow = block.getAuxPoW();
+        assertNotNull(auxpow);
+        final Transaction auxpowCoinbase = auxpow.getCoinbase();
+        assertEquals("c84431cf41f592373cc70db07f6804f945202f5f7baad31a8bbab89aaecb7b8b", auxpowCoinbase.getHashAsString());
+
+        assertTrue(auxpow.checkProofOfWork(block.getHash(), block.getDifficultyTargetAsInteger(), true));
     }
 
     /**
