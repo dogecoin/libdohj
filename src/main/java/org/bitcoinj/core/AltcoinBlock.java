@@ -196,9 +196,8 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         this.auxpow = null;
         if (this.auxpowChain) {
             final AuxPoWNetworkParameters auxpowParams = (AuxPoWNetworkParameters)this.params;
-            if (auxpowParams.isAuxPoWBlockVersion(this.getRawVersion())) {
-                // The following is used in dogecoinj, but I don't think we necessarily need it
-                // payload.length >= 160) { // We have at least 2 headers in an Aux block. Workaround for StoredBlocks
+            if (auxpowParams.isAuxPoWBlockVersion(this.getRawVersion())
+                && payload.length >= 160) { // We have at least 2 headers in an Aux block. Workaround for StoredBlocks
                 this.auxpow = new AuxPoW(params, payload, cursor, this, serializer);
                 optimalEncodingMessageSize += auxpow.getOptimalEncodingMessageSize();
             }
