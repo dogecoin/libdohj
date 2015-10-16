@@ -211,7 +211,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         Block blockIntervalAgo = cursor.getHeader();
         long receivedTargetCompact = nextBlock.getDifficultyTarget();
         long newTargetCompact = this.getNewDifficultyTarget(previousHeight, prev.getTimeSeconds(),
-            receivedTargetCompact, blockIntervalAgo.getTimeSeconds());
+            prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds());
 
         if (newTargetCompact != receivedTargetCompact)
             throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
