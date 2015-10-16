@@ -20,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import org.bitcoinj.core.AltcoinBlock;
 
-import org.libdohj.core.AltcoinNetworkParameters;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Coin;
 import static org.bitcoinj.core.Coin.COIN;
@@ -92,6 +91,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     protected final int diffChangeTarget;
 
     protected Logger log = LoggerFactory.getLogger(AbstractDogecoinParams.class);
+    public static final int DOGECOIN_PROTOCOL_VERSION_AUXPOW = 70003;
+    public static final int DOGECOIN_PROTOCOL_VERSION_CURRENT = 70004;
 
     public AbstractDogecoinParams(final int setDiffChangeTarget) {
         super();
@@ -318,6 +319,20 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     @Override
     public AltcoinSerializer getSerializer(boolean parseRetain) {
         return new AltcoinSerializer(this, parseRetain);
+    }
+
+    @Override
+    public int getProtocolVersionNum(final ProtocolVersion version) {
+        switch (version) {
+            case PONG:
+            case BLOOM_FILTER:
+                return version.getBitcoinProtocolVersion();
+            case CURRENT:
+                return DOGECOIN_PROTOCOL_VERSION_CURRENT;
+            case MINIMUM:
+            default:
+                return DOGECOIN_PROTOCOL_VERSION_AUXPOW;
+        }
     }
 
     @Override
