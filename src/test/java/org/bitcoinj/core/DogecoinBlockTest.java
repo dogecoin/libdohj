@@ -54,6 +54,7 @@ public class DogecoinBlockTest {
         final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
         assertEquals("82bc68038f6034c0596b6e313729793a887fded6e92a31fbdf70863f89d9bea2", block.getHashAsString());
         assertEquals(1, block.getTransactions().size());
+        assertEquals(0x1e0ffff0L, block.getDifficultyTarget());
     }
 
     /**

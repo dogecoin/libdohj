@@ -173,8 +173,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         final int previousHeight = storedPrev.getHeight();
         final boolean digishieldAlgorithm = previousHeight + 1 >= this.getDigishieldBlockHeight();
         final int retargetInterval = digishieldAlgorithm
-            ? this.getInterval()
-            : this.getNewInterval();
+            ? this.getNewInterval()
+            : this.getInterval();
         
         // Is this supposed to be a difficulty transition point?
         if ((storedPrev.getHeight() + 1) % retargetInterval != 0) {
@@ -226,7 +226,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
      * @param lastRetargetTime Time of the last difficulty retarget.
      * @return New difficulty target as compact bytes.
      */
-    protected long getNewDifficultyTarget(int previousHeight, long previousBlockTime,
+    public long getNewDifficultyTarget(int previousHeight, long previousBlockTime,
         final long lastDifficultyTarget, final long lastRetargetTime) {
         final int height = previousHeight + 1;
         final boolean digishieldAlgorithm = height >= this.getDigishieldBlockHeight();
