@@ -24,6 +24,9 @@ import static com.google.common.base.Preconditions.checkState;
  * Parameters for the main production network on which people trade goods and services.
  */
 public class DogecoinMainNetParams extends AbstractDogecoinParams {
+    public static final int MAINNET_MAJORITY_WINDOW = 2000;
+    public static final int MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED = 1900;
+    public static final int MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 1500;
     protected static final int DIFFICULTY_CHANGE_TARGET = 145000;
 
     public DogecoinMainNetParams() {
@@ -51,6 +54,10 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         String genesisHash = genesisBlock.getHashAsString();
         checkState(genesisHash.equals("1a91e3dace36e2be3bf030a65679fe821aa1d6ef92e7c9902eb318182c355691"),
                 genesisHash);
+
+        majorityEnforceBlockUpgrade = MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
+        majorityRejectBlockOutdated = MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED;
+        majorityWindow = MAINNET_MAJORITY_WINDOW;
 
         // This contains (at a minimum) the blocks which are not BIP30 compliant. BIP30 changed how duplicate
         // transactions are handled. Duplicated transactions could occur in the case where a coinbase had the same

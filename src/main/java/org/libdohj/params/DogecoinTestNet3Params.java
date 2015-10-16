@@ -17,7 +17,6 @@
 
 package org.libdohj.params;
 
-import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Utils;
 import org.spongycastle.util.encoders.Hex;
 
@@ -28,6 +27,9 @@ import static com.google.common.base.Preconditions.checkState;
  * and testing of applications and new Bitcoin versions.
  */
 public class DogecoinTestNet3Params extends AbstractDogecoinParams {
+    public static final int TESTNET_MAJORITY_WINDOW = 1000;
+    public static final int TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED = 750;
+    public static final int TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 501;
     protected static final int DIFFICULTY_CHANGE_TARGET = 145000;
 
     public DogecoinTestNet3Params() {
@@ -51,8 +53,12 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         checkState(genesisHash.equals("bb0a78264637406b6360aad926284d544d7049f45189db5664f3c4d07350559e"));
         alertSigningKey = Hex.decode("042756726da3c7ef515d89212ee1705023d14be389e25fe15611585661b9a20021908b2b80a3c7200a0139dd2b26946606aab0eef9aa7689a6dc2c7eee237fa834");
 
+        majorityEnforceBlockUpgrade = TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
+        majorityRejectBlockOutdated = TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED;
+        majorityWindow = TESTNET_MAJORITY_WINDOW;
+
         dnsSeeds = new String[] {
-            // "testnets.chain.so"  // Chain.so
+            "node.jrn.me.uk"
         };
         // Note this is the same as the BIP32 testnet, as BIP44 makes HD wallets
         // chain agnostic. Dogecoin mainnet has its own headers for legacy reasons.
