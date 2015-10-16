@@ -211,7 +211,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
         Block blockIntervalAgo = cursor.getHeader();
         long receivedTargetCompact = nextBlock.getDifficultyTarget();
-        long newTargetCompact = this.getNewDifficultyTarget(previousHeight, prev, blockIntervalAgo);
+        long newTargetCompact = this.getNewDifficultyTarget(previousHeight, prev,
+            nextBlock, blockIntervalAgo);
 
         if (newTargetCompact != receivedTargetCompact)
             throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
@@ -220,14 +221,17 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     /**
      * 
+     * @param previousHeight height of the block immediately before the retarget.
      * @param prev the block immediately before the retarget block.
+     * @param nextBlock the block the retarget happens at.
      * @param blockIntervalAgo The last retarget block.
      * @return New difficulty target as compact bytes.
      */
-    public long getNewDifficultyTarget(int previousHeight, final Block prev,
+    public long getNewDifficultyTarget(int previousHeight, final Block prev, final Block nextBlock,
         final Block blockIntervalAgo) {
         return this.getNewDifficultyTarget(previousHeight, prev.getTimeSeconds(),
-            blockIntervalAgo.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds());
+            prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
+            nextBlock.getDifficultyTarget());
     }
 
     /**
@@ -236,10 +240,13 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
      * @param previousBlockTime Time of the block immediately previous to the one we're calculating difficulty of.
      * @param lastDifficultyTarget Compact difficulty target of the last retarget block.
      * @param lastRetargetTime Time of the last difficulty retarget.
+     * @param nextDifficultyTarget The expected difficulty target of the next
+     * block, used for determining precision of the result.
      * @return New difficulty target as compact bytes.
      */
-    public long getNewDifficultyTarget(int previousHeight, long previousBlockTime,
-        final long lastDifficultyTarget, final long lastRetargetTime) {
+    protected long getNewDifficultyTarget(int previousHeight, long previousBlockTime,
+        final long lastDifficultyTarget, final long lastRetargetTime,
+        final long nextDifficultyTarget) {
         final int height = previousHeight + 1;
         final boolean digishieldAlgorithm = height >= this.getDigishieldBlockHeight();
         final int retargetTimespan = digishieldAlgorithm
@@ -287,7 +294,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
             newTarget = this.getMaxTarget();
         }
 
-        int accuracyBytes = (int) (lastDifficultyTarget >>> 24) - 3;
+        int accuracyBytes = (int) (nextDifficultyTarget >>> 24) - 3;
 
         // The calculated difficulty is to a higher precision than received, so reduce here.
         BigInteger mask = BigInteger.valueOf(0xFFFFFFL).shiftLeft(accuracyBytes * 8);
