@@ -15,10 +15,14 @@
  */
 package org.libdohj.params;
 
-import org.libdohj.params.AbstractDogecoinParams;
-import org.libdohj.params.DogecoinMainNetParams;
+import java.io.IOException;
+import org.bitcoinj.core.AltcoinBlock;
+import org.bitcoinj.core.Context;
+import org.bitcoinj.core.Util;
 import static org.junit.Assert.assertEquals;
+import org.junit.Before;
 import org.junit.Test;
+import org.libdohj.core.AltcoinSerializer;
 
 /**
  *
@@ -27,6 +31,11 @@ import org.junit.Test;
 public class AbstractDogecoinParamsTest {
     private static final AbstractDogecoinParams params = DogecoinMainNetParams.get();
 
+    @Before
+    public void setUp() throws Exception {
+        Context context = new Context(params);
+    }
+
     @Test
     public void shouldCalculateBitcoinLikeDifficulty() {
         int previousHeight = 239;
@@ -34,13 +43,6 @@ public class AbstractDogecoinParamsTest {
         long lastRetargetDifficulty = 0x1e0ffff0;
         long lastRetargetTime = 1386474927; // Block 1
         long newDifficulty = params.getNewDifficultyTarget(previousHeight, previousBlockTime, lastRetargetDifficulty, lastRetargetTime);
-        assertEquals(newDifficulty, 0x1e00ffff);
-
-        previousHeight = 479;
-        previousBlockTime = 1386475840;
-        lastRetargetDifficulty = 0x1e0fffff;
-        lastRetargetTime = 1386475638; // Block 239
-        newDifficulty = params.getNewDifficultyTarget(previousHeight, previousBlockTime, lastRetargetDifficulty, lastRetargetTime);
         assertEquals(newDifficulty, 0x1e00ffff);
 
         previousHeight = 9599;
@@ -70,5 +72,19 @@ public class AbstractDogecoinParamsTest {
         long lastRetargetTime = 1395094679;
         long newDifficulty = params.getNewDifficultyTarget(previousHeight, previousBlockTime, lastRetargetDifficulty, lastRetargetTime);
         assertEquals(newDifficulty, 0x1b6558a4);
+    }
+
+    @Test
+    public void shouldCalculateFirstRetarget() throws IOException {
+        // Do a more in-depth test for the first retarget
+        byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block239.bin"));
+        AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
+        final AltcoinBlock block239 = (AltcoinBlock)serializer.makeBlock(payload);
+        final AltcoinBlock block479;
+
+        payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block479.bin"));
+        block479 = (AltcoinBlock)serializer.makeBlock(payload);
+
+        assertEquals(0x1e00ffff, params.getNewDifficultyTarget(479, block239, block479));
     }
 }
