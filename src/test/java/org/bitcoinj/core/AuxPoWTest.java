@@ -12,11 +12,8 @@ import org.libdohj.params.DogecoinMainNetParams;
 
 import static org.bitcoinj.core.Util.getBytes;
 import static org.bitcoinj.core.Utils.reverseBytes;
+import static org.junit.Assert.*;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -391,5 +388,22 @@ public class AuxPoWTest {
         final int expResult = 40;
         final int result = AuxPoW.getExpectedIndex(nonce, chainId, merkleHeight);
         assertEquals(expResult, result);
+    }
+
+    /**
+     * Tests the array matching algorithm for not accepting part of the array when it is in the end of the script.
+     */
+    @Test
+    public void testArrayMatch() {
+        byte[] script = Utils.HEX.decode("089b911f5e471c0e1800f3384281ebec5b372fbb6f358790a92747ade271ccdf");
+        byte[] prefix = Utils.HEX.decode("089b911f");
+        byte[] suffix = Utils.HEX.decode("e271ccdf");
+        byte[] anywhere = Utils.HEX.decode("384281eb");
+        byte[] overTheEnd = Utils.HEX.decode("e271ccdf000000");
+
+        assertTrue(AuxPoW.arrayMatch(script, 0, prefix));
+        assertTrue(AuxPoW.arrayMatch(script, 28, suffix));
+        assertTrue(AuxPoW.arrayMatch(script, 11, anywhere));
+        assertFalse(AuxPoW.arrayMatch(script, 28, overTheEnd));
     }
 }
