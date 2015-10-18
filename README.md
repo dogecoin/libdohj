@@ -1,6 +1,6 @@
 ### Welcome to libdohj
 
-The libdohj library is a lightweight wrapper library around the bitcoij Java library,
+The libdohj library is a lightweight wrapper library around the bitcoinj Java library,
 enabling support for Dogecoin (pull requests for support for other altcoins would
 be welcomed).
 
