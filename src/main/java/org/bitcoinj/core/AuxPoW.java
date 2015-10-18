@@ -423,12 +423,13 @@ public class AuxPoW extends ChildMessage {
      * @return true if the shorter array is present at the offset, false otherwise.
      */
     static boolean arrayMatch(byte[] script, int offset, byte[] subArray) {
-        for (int matchIdx = 0; matchIdx + offset < script.length && matchIdx < subArray.length; matchIdx++) {
+        int matchIdx;
+        for (matchIdx = 0; matchIdx + offset < script.length && matchIdx < subArray.length; matchIdx++) {
             if (script[offset + matchIdx] != subArray[matchIdx]) {
                 return false;
             }
         }
-        return true;
+        return matchIdx == subArray.length;
     }
 
     /**
