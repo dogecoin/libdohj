@@ -60,14 +60,18 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
 
     private ScryptHash scryptHash;
 
-    /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests. */
+    /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests.
+     * @param params NetworkParameters object.
+     */
     public AltcoinBlock(final NetworkParameters params, final long version) {
         super(params, version);
     }
 
-    /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests. */
-    public AltcoinBlock(NetworkParameters params, byte[] payloadBytes) {
-        this(params, payloadBytes, params.getDefaultSerializer(), payloadBytes.length);
+    /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests.
+     * @param params NetworkParameters object.
+     */
+    public AltcoinBlock(final NetworkParameters params, final byte[] payloadBytes) {
+        this(params, payloadBytes, 0, params.getDefaultSerializer(), payloadBytes.length);
     }
 
     /**
@@ -78,9 +82,10 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
      * as the length will be provided as part of the header.  If unknown then set to Message.UNKNOWN_LENGTH
      * @throws ProtocolException
      */
-    public AltcoinBlock(NetworkParameters params, byte[] payloadBytes, MessageSerializer serializer, int length)
+    public AltcoinBlock(final NetworkParameters params, final byte[] payloadBytes,
+            final int offset, final MessageSerializer serializer, final int length)
             throws ProtocolException {
-        super(params, payloadBytes, serializer, length);
+        super(params, payloadBytes, offset, serializer, length);
     }
 
     public AltcoinBlock(NetworkParameters params, byte[] payloadBytes, int offset,

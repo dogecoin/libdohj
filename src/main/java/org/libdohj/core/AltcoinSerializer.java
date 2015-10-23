@@ -22,12 +22,7 @@ public class AltcoinSerializer extends BitcoinSerializer {
     }
 
     @Override
-    public Block makeBlock(byte[] payloadBytes) throws ProtocolException {
-        return new AltcoinBlock(getParameters(), payloadBytes, this, payloadBytes.length);
-    }
-
-    @Override
-    public Block makeBlock(byte[] payloadBytes, int length) throws ProtocolException {
-        return new AltcoinBlock(getParameters(), payloadBytes, this, length);
+    public Block makeBlock(final byte[] payloadBytes, final int offset, final int length) throws ProtocolException {
+        return new AltcoinBlock(getParameters(), payloadBytes, offset, this, length);
     }
 }
