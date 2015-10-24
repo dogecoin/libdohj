@@ -355,7 +355,10 @@ public class AuxPoW extends ChildMessage {
 
         if (getChainMerkleBranch().getIndex() != getExpectedIndex(nonce, ((AuxPoWNetworkParameters) params).getChainID(), getChainMerkleBranch().size())) {
             if (throwException) {
-                throw new VerificationException("Aux POW wrong index");
+                throw new VerificationException("Aux POW wrong index in chain merkle branch for chain ID "
+                    + ((AuxPoWNetworkParameters) params).getChainID() + ". Was "
+                    + getChainMerkleBranch().getIndex() + ", expected "
+                    + getExpectedIndex(nonce, ((AuxPoWNetworkParameters) params).getChainID(), getChainMerkleBranch().size()));
             }
             return false;
         }
@@ -402,12 +405,20 @@ public class AuxPoW extends ChildMessage {
         // Choose a pseudo-random slot in the chain merkle tree
         // but have it be fixed for a size/nonce/chain combination.
 
-        long rand = nonce;
+        // We do most of the maths with a signed 32 bit integer, as the operation is
+        // the same as the 32 unsigned integer that the reference version uses
+        int rand = (int) nonce;
         rand = rand * 1103515245 + 12345;
         rand += chainId;
         rand = rand * 1103515245 + 12345;
 
-        return (int) (rand % (1L << merkleHeight));
+        // At this point, we need to flip the value to its positive version,
+        // so we switch to a 64 bit signed integer for the last calculations
+        long longRand = rand & 0xffffffffl;
+
+        longRand %= (1 << merkleHeight);
+
+        return (int) longRand;
     }
 
     public Transaction getTransaction() {

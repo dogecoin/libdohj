@@ -124,6 +124,31 @@ public class DogecoinBlockTest {
 
     /**
      * Confirm parsing of block with a nonce value above Integer.MAX_VALUE.
+     * See https://github.com/rnicoll/libdohj/pull/7
+     * 
+     * @throws IOException 
+     */
+    @Test
+    public void shouldParseBlock748634() throws IOException {
+        byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block748634.bin"));
+        AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
+        final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
+        assertEquals("bd98a06391115285265c04984e8505229739f6ffa5d498929a91fbe7c281ea7b", block.getHashAsString());
+        assertEquals(0, block.getNonce());
+
+        // Check block version values
+        assertEquals(2, block.getVersion());
+        assertEquals(98, block.getChainID());
+        assertTrue(block.getVersionFlags().get(0));
+
+        final AuxPoW auxpow = block.getAuxPoW();
+        assertNotNull(auxpow);
+
+        assertTrue(auxpow.checkProofOfWork(block.getHash(), block.getDifficultyTargetAsInteger(), true));
+    }
+
+    /**
+     * Confirm parsing of block with a nonce value above Integer.MAX_VALUE.
      * See https://github.com/rnicoll/libdohj/issues/5
      * 
      * @throws IOException 
