@@ -204,7 +204,6 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
             if (auxpowParams.isAuxPoWBlockVersion(this.getRawVersion())
                 && payload.length >= 160) { // We have at least 2 headers in an Aux block. Workaround for StoredBlocks
                 this.auxpow = new AuxPoW(params, payload, cursor, this, serializer);
-                optimalEncodingMessageSize += auxpow.getOptimalEncodingMessageSize();
             }
         }
 
@@ -218,6 +217,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         parseAuxPoW();
         if (null != this.auxpow) {
             super.parseTransactions(offset + auxpow.getMessageSize());
+            optimalEncodingMessageSize += auxpow.getMessageSize();
         } else {
             super.parseTransactions(offset);
         }
