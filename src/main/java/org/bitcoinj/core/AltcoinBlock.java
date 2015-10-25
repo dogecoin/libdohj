@@ -126,6 +126,10 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         return this.auxpow;
     }
 
+    public void setAuxPoW(AuxPoW auxpow) {
+        this.auxpow = auxpow;
+    }
+
     /**
      * Returns the Scrypt hash of the block (which for a valid, solved block should be
      * below the target). Big endian.
