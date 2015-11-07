@@ -21,7 +21,8 @@ import org.bitcoinj.core.Sha256Hash;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
- * Parameters for the main production network on which people trade goods and services.
+ * Parameters for the main Dogecoin production network on which people trade
+ * goods and services.
  */
 public class DogecoinMainNetParams extends AbstractDogecoinParams {
     public static final int MAINNET_MAJORITY_WINDOW = 2000;

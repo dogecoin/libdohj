@@ -44,7 +44,7 @@ import org.libdohj.core.AltcoinSerializer;
 import org.libdohj.core.AuxPoWNetworkParameters;
 
 /**
- * Parameters for the main Dogecoin production network on which people trade goods and services.
+ * Common parameters for Dogecoin networks.
  */
 public abstract class AbstractDogecoinParams extends NetworkParameters implements AuxPoWNetworkParameters {
     /** Standard format for the DOGE denomination. */

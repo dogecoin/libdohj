@@ -23,8 +23,9 @@ import org.spongycastle.util.encoders.Hex;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
- * Parameters for the testnet, a separate public instance of Bitcoin that has relaxed rules suitable for development
- * and testing of applications and new Bitcoin versions.
+ * Parameters for the Dogecoin testnet, a separate public network that has
+ * relaxed rules suitable for development and testing of applications and new
+ * Dogecoin versions.
  */
 public class DogecoinTestNet3Params extends AbstractDogecoinParams {
     public static final int TESTNET_MAJORITY_WINDOW = 1000;
@@ -35,7 +36,7 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
     public DogecoinTestNet3Params() {
         super(DIFFICULTY_CHANGE_TARGET);
         id = ID_DOGE_TESTNET;
-        // Genesis hash is bb0a78264637406b6360aad926284d544d7049f45189db5664f3c4d07350559e
+
         packetMagic = 0xfcc1b7dc;
 
         maxTarget = Utils.decodeCompactBits(0x1e0fffffL);
