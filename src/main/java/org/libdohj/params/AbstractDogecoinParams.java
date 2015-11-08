@@ -149,7 +149,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     @Override
     public Coin getMaxMoney() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        // TODO: Change to be Doge compatible
+        return MAX_MONEY;
     }
 
     @Override
