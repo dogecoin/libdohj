@@ -248,12 +248,15 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     protected boolean checkProofOfWork(boolean throwException) throws VerificationException {
         if (params instanceof AltcoinNetworkParameters) {
             BigInteger target = getDifficultyTargetAsInteger();
-        
-            final AuxPoWNetworkParameters altParams = (AuxPoWNetworkParameters)this.params;
-            if (altParams.isAuxPoWBlockVersion(getRawVersion()) && null != auxpow) {
-                return auxpow.checkProofOfWork(this.getHash(), target, throwException);
+
+            if (params instanceof AuxPoWNetworkParameters) {
+                final AuxPoWNetworkParameters auxParams = (AuxPoWNetworkParameters)this.params;
+                if (auxParams.isAuxPoWBlockVersion(getRawVersion()) && null != auxpow) {
+                    return auxpow.checkProofOfWork(this.getHash(), target, throwException);
+                }
             }
 
+            final AltcoinNetworkParameters altParams = (AltcoinNetworkParameters)this.params;
             BigInteger h = altParams.getBlockDifficultyHash(this).toBigInteger();
             if (h.compareTo(target) > 0) {
                 // Proof of work check failed!
