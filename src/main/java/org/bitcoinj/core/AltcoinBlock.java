@@ -46,6 +46,8 @@ import org.libdohj.core.AuxPoWNetworkParameters;
  * specifically using {@link Peer#getBlock(Sha256Hash)}, or grab one from a downloaded {@link BlockChain}.
  */
 public class AltcoinBlock extends org.bitcoinj.core.Block {
+    private static final int BYTE_BITS = 8;
+
     private boolean auxpowParsed = false;
     private boolean auxpowBytesValid = false;
 
@@ -167,7 +169,16 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
      * @return flags as a bitset. 
      */
     public BitSet getVersionFlags() {
-        return BitSet.valueOf(new long[] {(this.getRawVersion() & 0xff00) >> 8});
+        final BitSet bitset = new BitSet(BYTE_BITS);
+        final int bits = (int) (this.getRawVersion() & 0xff00) >> 8;
+
+        for (int bit = 0; bit < BYTE_BITS; bit++) {
+            if ((bits & (1 << bit)) > 0) {
+                bitset.set(bit);
+            }
+        }
+
+        return bitset;
     }
 
     /**
