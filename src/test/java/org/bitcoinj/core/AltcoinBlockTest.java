@@ -18,6 +18,7 @@ package org.bitcoinj.core;
 import java.util.BitSet;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,26 +44,26 @@ public class AltcoinBlockTest {
     public void testGetVersionFlags() {
         AltcoinBlock block = new AltcoinBlock(params, 0L);
         BitSet expected = new BitSet(8);
-        assertArrayEquals(block.getVersionFlags().toByteArray(), expected.toByteArray());
+        assertEquals(block.getVersionFlags(), expected);
 
         // Set everything but the version flags
         block = new AltcoinBlock(params, 0xffff00ff);
-        assertArrayEquals(block.getVersionFlags().toByteArray(), expected.toByteArray());
+        assertEquals(block.getVersionFlags(), expected);
 
         // Set everything
         block = new AltcoinBlock(params, 0xffffffff);
         expected.set(0, 8);
-        assertArrayEquals(block.getVersionFlags().toByteArray(), expected.toByteArray());
+        assertEquals(block.getVersionFlags(), expected);
 
         // Set only the version flags
         block = new AltcoinBlock(params, 0x0000ff00);
-        assertArrayEquals(block.getVersionFlags().toByteArray(), expected.toByteArray());
+        assertEquals(block.getVersionFlags(), expected);
 
         // Set some of the version flags
         block = new AltcoinBlock(params, 0x00001700);
         expected.clear(0, 8);
         expected.set(0, 3);
         expected.set(4);
-        assertArrayEquals(block.getVersionFlags().toByteArray(), expected.toByteArray());
+        assertEquals(block.getVersionFlags(), expected);
     }
 }
