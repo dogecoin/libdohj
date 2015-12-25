@@ -18,8 +18,8 @@ package org.libdohj.params;
 
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
-import org.bitcoinj.core.AltcoinBlock;
 
+import org.bitcoinj.core.AltcoinBlock;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Coin;
 import static org.bitcoinj.core.Coin.COIN;
@@ -168,29 +168,97 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         return false;
     }
 
+    /** Dogecoin: Normally minimum difficulty blocks can only occur in between
+     * retarget blocks. However, once we introduce Digishield every block is
+     * a retarget, so we need to handle minimum difficulty on all blocks.
+     */
+    private boolean allowDigishieldMinDifficultyForBlock(final StoredBlock pindexLast, final Block pblock) {
+        // check if the chain allows minimum difficulty blocks
+        if (!this.allowMinDifficultyBlocks())
+            return false;
+
+        // check if the chain allows minimum difficulty blocks on recalc blocks
+        if (pindexLast.getHeight() < 157500)
+            return false;
+
+        // Allow for a minimum block time if the elapsed time > 2*nTargetSpacing
+        return (pblock.getTimeSeconds() > pindexLast.getHeader().getTimeSeconds() + this.getTargetSpacing(pindexLast.getHeight() + 1) * 2);
+    }
+
     @Override
     public void checkDifficultyTransitions(StoredBlock storedPrev, Block nextBlock, BlockStore blockStore)
         throws VerificationException, BlockStoreException {
+        try {
+            final long newTargetCompact = calculateNewDifficultyTarget(storedPrev, nextBlock, blockStore);
+            final long receivedTargetCompact = nextBlock.getDifficultyTarget();
+
+            if (newTargetCompact != receivedTargetCompact)
+                throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
+                        newTargetCompact + " vs " + receivedTargetCompact);
+        } catch (CheckpointEncounteredException ex) {
+            // Just have to take it on trust then
+        }
+    }
+
+    /**
+     * Get the difficulty target expected for the next block. This includes all
+     * the weird cases for Dogecoin such as testnet blocks which can be maximum
+     * difficulty if the block interval is high enough.
+     *
+     * @throws CheckpointEncounteredException if a checkpoint is encountered while
+     * calculating difficulty target, and therefore no conclusive answer can
+     * be provided.
+     */
+    public long calculateNewDifficultyTarget(StoredBlock storedPrev, Block nextBlock, BlockStore blockStore)
+        throws VerificationException, BlockStoreException, CheckpointEncounteredException {
+        // Dogecoin: Special rules for minimum difficulty blocks with Digishield
+        if (allowDigishieldMinDifficultyForBlock(storedPrev, nextBlock))
+        {
+            // Special difficulty rule for testnet:
+            // If the new block's timestamp is more than 2* nTargetSpacing minutes
+            // then allow mining of a min-difficulty block.
+            return Utils.encodeCompactBits(this.getMaxTarget());
+        }
+
         final Block prev = storedPrev.getHeader();
         final int previousHeight = storedPrev.getHeight();
         final boolean digishieldAlgorithm = previousHeight + 1 >= this.getDigishieldBlockHeight();
         final int retargetInterval = digishieldAlgorithm
             ? this.getNewInterval()
             : this.getInterval();
-        
+
         // Is this supposed to be a difficulty transition point?
         if ((storedPrev.getHeight() + 1) % retargetInterval != 0) {
+            if (this.allowMinDifficultyBlocks()) {
+                // Special difficulty rule for testnet:
+                // If the new block's timestamp is more than 2 minutes
+                // then allow mining of a min-difficulty block.
+                if (nextBlock.getTimeSeconds() > prev.getTimeSeconds() + getTargetSpacing(previousHeight + 1) * 2) {
+                    return Utils.encodeCompactBits(maxTarget);
+                } else {
+                    // Return the last non-special-min-difficulty-rules-block
+                    StoredBlock cursor = storedPrev;
+
+                    while (cursor.getHeight() % retargetInterval != 0
+                            && cursor.getHeader().getDifficultyTarget() == Utils.encodeCompactBits(this.getMaxTarget())) {
+                        StoredBlock prevCursor = cursor.getPrev(blockStore);
+                        if (prevCursor == null) {
+                            break;
+                        }
+                        cursor = prevCursor;
+                    }
+
+                    return cursor.getHeader().getDifficultyTarget();
+                }
+            }
+
             // No ... so check the difficulty didn't actually change.
-            if (nextBlock.getDifficultyTarget() != prev.getDifficultyTarget())
-                throw new VerificationException("Unexpected change in difficulty at height " + storedPrev.getHeight() +
-                        ": " + Long.toHexString(nextBlock.getDifficultyTarget()) + " vs " +
-                        Long.toHexString(prev.getDifficultyTarget()));
-            return;
+            return prev.getDifficultyTarget();
         }
 
         // We need to find a block far back in the chain. It's OK that this is expensive because it only occurs every
         // two weeks after the initial block chain download.
-        StoredBlock cursor = blockStore.get(prev.getHash());
+        StoredBlock cursor = storedPrev;
         int goBack = retargetInterval - 1;
         if (cursor.getHeight()+1 != retargetInterval)
             goBack = retargetInterval;
@@ -207,35 +275,30 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         //We used checkpoints...
         if (cursor == null) {
             log.debug("Difficulty transition: Hit checkpoint!");
-            return;
+            throw new CheckpointEncounteredException();
         }
 
         Block blockIntervalAgo = cursor.getHeader();
-        long receivedTargetCompact = nextBlock.getDifficultyTarget();
-        long newTargetCompact = this.getNewDifficultyTarget(previousHeight, prev,
-            nextBlock, blockIntervalAgo);
-
-        if (newTargetCompact != receivedTargetCompact)
-            throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                    newTargetCompact + " vs " + receivedTargetCompact);
-    }
-
-    /**
-     * 
-     * @param previousHeight height of the block immediately before the retarget.
-     * @param prev the block immediately before the retarget block.
-     * @param nextBlock the block the retarget happens at.
-     * @param blockIntervalAgo The last retarget block.
-     * @return New difficulty target as compact bytes.
-     */
-    public long getNewDifficultyTarget(int previousHeight, final Block prev, final Block nextBlock,
-        final Block blockIntervalAgo) {
-        return this.getNewDifficultyTarget(previousHeight, prev.getTimeSeconds(),
+        return this.calculateNewDifficultyTargetInner(previousHeight, prev.getTimeSeconds(),
             prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
             nextBlock.getDifficultyTarget());
     }
 
     /**
+     * Calculate the difficulty target expected for the next block after a normal
+     * recalculation interval. Does not handle special cases such as testnet blocks
+     * being setting the target to maximum for blocks after a long interval.
+     */
+    protected long calculateNewDifficultyTargetInner(int previousHeight, final Block prev,
+            final Block nextBlock, final Block blockIntervalAgo) {
+        return this.calculateNewDifficultyTargetInner(previousHeight, prev.getTimeSeconds(),
+            prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
+            nextBlock.getDifficultyTarget());
+    }
+
+    /**
+     * Calculate the difficulty target expected for the next block after a normal
+     * recalculation interval.
      * 
      * @param previousHeight Height of the block immediately previous to the one we're calculating difficulty of.
      * @param previousBlockTime Time of the block immediately previous to the one we're calculating difficulty of.
@@ -245,7 +308,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
      * block, used for determining precision of the result.
      * @return New difficulty target as compact bytes.
      */
-    protected long getNewDifficultyTarget(int previousHeight, long previousBlockTime,
+    protected long calculateNewDifficultyTargetInner(int previousHeight, long previousBlockTime,
         final long lastDifficultyTarget, final long lastRetargetTime,
         final long nextDifficultyTarget) {
         final int height = previousHeight + 1;
@@ -316,6 +379,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         return AUXPOW_CHAIN_ID;
     }
 
+    public abstract boolean allowMinDifficultyBlocks();
+
     /**
      * Get the hash to use for a block.
      */
@@ -347,5 +412,29 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     public boolean isAuxPoWBlockVersion(long version) {
         return version >= BLOCK_MIN_VERSION_AUXPOW
             && (version & BLOCK_VERSION_FLAG_AUXPOW) > 0;
+    }
+
+    /**
+     * Get the target time between individual blocks. Dogecoin uses this in its
+     * difficulty calculations, but most coins don't.
+     *
+     * @param height the block height to calculate at.
+     * @return the target spacing in seconds.
+     */
+    protected int getTargetSpacing(int height) {
+        final boolean digishieldAlgorithm = height >= this.getDigishieldBlockHeight();
+        final int retargetInterval = digishieldAlgorithm
+            ? this.getNewInterval()
+            : this.getInterval();
+        final int retargetTimespan = digishieldAlgorithm
+            ? this.getNewTargetTimespan()
+            : this.getTargetTimespan();
+        return retargetTimespan / retargetInterval;
+    }
+
+    private static class CheckpointEncounteredException extends Exception {
+
+        private CheckpointEncounteredException() {
+        }
     }
 }

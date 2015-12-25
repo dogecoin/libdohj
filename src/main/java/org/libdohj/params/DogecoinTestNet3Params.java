@@ -59,7 +59,7 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         majorityWindow = TESTNET_MAJORITY_WINDOW;
 
         dnsSeeds = new String[] {
-            "node.jrn.me.uk"
+            "testseed.jrn.me.uk"
         };
         // Note this is the same as the BIP32 testnet, as BIP44 makes HD wallets
         // chain agnostic. Dogecoin mainnet has its own headers for legacy reasons.
@@ -73,6 +73,11 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
             instance = new DogecoinTestNet3Params();
         }
         return instance;
+    }
+
+    @Override
+    public boolean allowMinDifficultyBlocks() {
+        return true;
     }
 
     @Override

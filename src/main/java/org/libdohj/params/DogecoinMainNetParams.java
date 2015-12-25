@@ -101,6 +101,11 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
     }
 
     @Override
+    public boolean allowMinDifficultyBlocks() {
+        return false;
+    }
+
+    @Override
     public String getPaymentProtocolId() {
         // TODO: CHANGE THIS
         return ID_DOGE_MAINNET;

@@ -45,7 +45,7 @@ public class AbstractDogecoinParamsTest {
         long lastRetargetTime = 1386474927; // Block 1
         long nextDifficulty = 0x1e00ffff;
         long newDifficulty =
-            params.getNewDifficultyTarget(previousHeight, previousBlockTime,
+            params.calculateNewDifficultyTargetInner(previousHeight, previousBlockTime,
                 lastRetargetDifficulty, lastRetargetTime, nextDifficulty);
         assertEquals(0x1e00ffff, newDifficulty);
 
@@ -55,7 +55,7 @@ public class AbstractDogecoinParamsTest {
         lastRetargetTime = 1386942008; // Block 9359
         nextDifficulty = 0x1c15ea59;
         newDifficulty =
-            params.getNewDifficultyTarget(previousHeight, previousBlockTime,
+            params.calculateNewDifficultyTargetInner(previousHeight, previousBlockTime,
                 lastRetargetDifficulty, lastRetargetTime, nextDifficulty);
         assertEquals(0x1c15ea59, newDifficulty);
     }
@@ -72,7 +72,7 @@ public class AbstractDogecoinParamsTest {
         final long lastRetargetTime = 1386475840; // Block 479
         final long nextDifficulty = 0x1d0ffff0; // Block 720
         final long newDifficulty =
-            params.getNewDifficultyTarget(previousHeight, previousBlockTime,
+            params.calculateNewDifficultyTargetInner(previousHeight, previousBlockTime,
                 lastRetargetDifficulty, lastRetargetTime, nextDifficulty);
         assertEquals(0x1d0ffff0, newDifficulty);
     }
@@ -85,7 +85,7 @@ public class AbstractDogecoinParamsTest {
         final long lastRetargetTime = 1395094427;
         final long nextDifficulty = 0x1b671062;
         final long newDifficulty =
-            params.getNewDifficultyTarget(previousHeight, previousBlockTime,
+            params.calculateNewDifficultyTargetInner(previousHeight, previousBlockTime,
                 lastRetargetDifficulty, lastRetargetTime, nextDifficulty);
         assertEquals(0x1b671062, newDifficulty);
     }
@@ -99,7 +99,7 @@ public class AbstractDogecoinParamsTest {
         final long lastRetargetTime = 1395094679;
         final long nextDifficulty = 0x1b6558a4;
         final long newDifficulty =
-            params.getNewDifficultyTarget(previousHeight, previousBlockTime,
+            params.calculateNewDifficultyTargetInner(previousHeight, previousBlockTime,
                 lastRetargetDifficulty, lastRetargetTime, nextDifficulty);
         assertEquals(0x1b6558a4, newDifficulty);
     }
@@ -132,7 +132,18 @@ public class AbstractDogecoinParamsTest {
         assertEquals(Sha256Hash.wrap("82e56e141ccfe019d475382d9a108ef86afeb297d95443dfd7250e57af805696"), block719.getHash());
         assertEquals(Sha256Hash.wrap("6b34f1a7de1954beb0ddf100bb2b618ff0183b6ae2b4a9376721ef8e04ab3b39"), block720.getHash());
 
-        assertEquals(block480.getDifficultyTarget(), params.getNewDifficultyTarget(479, block479, block480, block239));
-        assertEquals(block720.getDifficultyTarget(), params.getNewDifficultyTarget(719, block719, block720, block479));
+        assertEquals(block480.getDifficultyTarget(), params.calculateNewDifficultyTargetInner(479, block479, block480, block239));
+        assertEquals(block720.getDifficultyTarget(), params.calculateNewDifficultyTargetInner(719, block719, block720, block479));
+    }
+
+    @Test
+    public void targetSpacingShouldBe60() {
+        // The getTargetSpacing() method only really exists for future expansion,
+        // and currently should always return 60 seconds
+        assertEquals(60, params.getTargetSpacing(0));
+        assertEquals(60, params.getTargetSpacing(1));
+        assertEquals(60, params.getTargetSpacing(params.getDigishieldBlockHeight() - 1));
+        assertEquals(60, params.getTargetSpacing(params.getDigishieldBlockHeight()));
+        assertEquals(60, params.getTargetSpacing(params.getDigishieldBlockHeight() + 1));
     }
 }
