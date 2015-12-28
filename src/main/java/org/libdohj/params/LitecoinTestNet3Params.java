@@ -111,8 +111,7 @@ public class LitecoinTestNet3Params extends AbstractLitecoinParams {
 
     @Override
     public String getPaymentProtocolId() {
-        // TODO: CHANGE ME
-        return PAYMENT_PROTOCOL_ID_TESTNET;
+        return ID_LITE_TESTNET;
     }
 
     @Override

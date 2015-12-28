@@ -130,27 +130,74 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
         return true;
     }
 
+
     @Override
     public void checkDifficultyTransitions(StoredBlock storedPrev, Block nextBlock, BlockStore blockStore)
         throws VerificationException, BlockStoreException {
+        try {
+            final long newTargetCompact = calculateNewDifficultyTarget(storedPrev, nextBlock, blockStore);
+            final long receivedTargetCompact = nextBlock.getDifficultyTarget();
+
+            if (newTargetCompact != receivedTargetCompact)
+                throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
+                        newTargetCompact + " vs " + receivedTargetCompact);
+        } catch (CheckpointEncounteredException ex) {
+            // Just have to take it on trust then
+        }
+    }
+
+    /**
+     * Get the difficulty target expected for the next block. This includes all
+     * the weird cases for Litecoin such as testnet blocks which can be maximum
+     * difficulty if the block interval is high enough.
+     *
+     * @throws CheckpointEncounteredException if a checkpoint is encountered while
+     * calculating difficulty target, and therefore no conclusive answer can
+     * be provided.
+     */
+    public long calculateNewDifficultyTarget(StoredBlock storedPrev, Block nextBlock, BlockStore blockStore)
+        throws VerificationException, BlockStoreException, CheckpointEncounteredException {
         final Block prev = storedPrev.getHeader();
         final int previousHeight = storedPrev.getHeight();
         final int retargetInterval = this.getInterval();
-        
+
         // Is this supposed to be a difficulty transition point?
         if ((storedPrev.getHeight() + 1) % retargetInterval != 0) {
+            if (this.allowMinDifficultyBlocks()) {
+                // Special difficulty rule for testnet:
+                // If the new block's timestamp is more than 5 minutes
+                // then allow mining of a min-difficulty block.
+                if (nextBlock.getTimeSeconds() > prev.getTimeSeconds() + getTargetSpacing() * 2) {
+                    return Utils.encodeCompactBits(maxTarget);
+                } else {
+                    // Return the last non-special-min-difficulty-rules-block
+                    StoredBlock cursor = storedPrev;
+
+                    while (cursor.getHeight() % retargetInterval != 0
+                            && cursor.getHeader().getDifficultyTarget() == Utils.encodeCompactBits(this.getMaxTarget())) {
+                        StoredBlock prevCursor = cursor.getPrev(blockStore);
+                        if (prevCursor == null) {
+                            break;
+                        }
+                        cursor = prevCursor;
+                    }
+
+                    return cursor.getHeader().getDifficultyTarget();
+                }
+            }
+
             // No ... so check the difficulty didn't actually change.
-            if (nextBlock.getDifficultyTarget() != prev.getDifficultyTarget())
-                throw new VerificationException("Unexpected change in difficulty at height " + storedPrev.getHeight() +
-                        ": " + Long.toHexString(nextBlock.getDifficultyTarget()) + " vs " +
-                        Long.toHexString(prev.getDifficultyTarget()));
-            return;
+            return prev.getDifficultyTarget();
         }
 
         // We need to find a block far back in the chain. It's OK that this is expensive because it only occurs every
         // two weeks after the initial block chain download.
-        StoredBlock cursor = blockStore.get(prev.getHash());
+        StoredBlock cursor = storedPrev;
         int goBack = retargetInterval - 1;
+
+        // Litecoin: This fixes an issue where a 51% attack can change difficulty at will.
+        // Go back the full period unless it's the first retarget after genesis.
+        // Code based on original by Art Forz
         if (cursor.getHeight()+1 != retargetInterval)
             goBack = retargetInterval;
 
@@ -166,30 +213,29 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
         //We used checkpoints...
         if (cursor == null) {
             log.debug("Difficulty transition: Hit checkpoint!");
-            return;
+            throw new CheckpointEncounteredException();
         }
 
         Block blockIntervalAgo = cursor.getHeader();
-        long receivedTargetCompact = nextBlock.getDifficultyTarget();
-        long newTargetCompact = this.getNewDifficultyTarget(previousHeight, prev,
-            nextBlock, blockIntervalAgo);
-
-        if (newTargetCompact != receivedTargetCompact)
-            throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                    newTargetCompact + " vs " + receivedTargetCompact);
+        return this.calculateNewDifficultyTargetInner(previousHeight, prev.getTimeSeconds(),
+            prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
+            nextBlock.getDifficultyTarget());
     }
 
     /**
-     * 
+     * Calculate the difficulty target expected for the next block after a normal
+     * recalculation interval. Does not handle special cases such as testnet blocks
+     * being setting the target to maximum for blocks after a long interval.
+     *
      * @param previousHeight height of the block immediately before the retarget.
      * @param prev the block immediately before the retarget block.
      * @param nextBlock the block the retarget happens at.
      * @param blockIntervalAgo The last retarget block.
      * @return New difficulty target as compact bytes.
      */
-    public long getNewDifficultyTarget(int previousHeight, final Block prev, final Block nextBlock,
-        final Block blockIntervalAgo) {
-        return this.getNewDifficultyTarget(previousHeight, prev.getTimeSeconds(),
+    protected long calculateNewDifficultyTargetInner(int previousHeight, final Block prev,
+            final Block nextBlock, final Block blockIntervalAgo) {
+        return this.calculateNewDifficultyTargetInner(previousHeight, prev.getTimeSeconds(),
             prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
             nextBlock.getDifficultyTarget());
     }
@@ -204,7 +250,7 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
      * block, used for determining precision of the result.
      * @return New difficulty target as compact bytes.
      */
-    protected long getNewDifficultyTarget(int previousHeight, long previousBlockTime,
+    protected long calculateNewDifficultyTargetInner(int previousHeight, long previousBlockTime,
         final long lastDifficultyTarget, final long lastRetargetTime,
         final long nextDifficultyTarget) {
         final int retargetTimespan = this.getTargetTimespan();
@@ -249,4 +295,18 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
                 return LITECOIN_PROTOCOL_VERSION_MINIMUM;
         }
     }
+
+    /**
+     * Whether this network has special rules to enable minimum difficulty blocks
+     * after a long interval between two blocks (i.e. testnet).
+     */
+    public boolean allowMinDifficultyBlocks() {
+        return this.isTestNet();
+    }
+
+    public int getTargetSpacing() {
+        return this.getTargetTimespan() / this.getInterval();
+    }
+
+    private static class CheckpointEncounteredException extends Exception {  }
 }

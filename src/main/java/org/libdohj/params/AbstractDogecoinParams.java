@@ -288,6 +288,12 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
      * Calculate the difficulty target expected for the next block after a normal
      * recalculation interval. Does not handle special cases such as testnet blocks
      * being setting the target to maximum for blocks after a long interval.
+     *
+     * @param previousHeight height of the block immediately before the retarget.
+     * @param prev the block immediately before the retarget block.
+     * @param nextBlock the block the retarget happens at.
+     * @param blockIntervalAgo The last retarget block.
+     * @return New difficulty target as compact bytes.
      */
     protected long calculateNewDifficultyTargetInner(int previousHeight, final Block prev,
             final Block nextBlock, final Block blockIntervalAgo) {
@@ -379,6 +385,10 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         return AUXPOW_CHAIN_ID;
     }
 
+    /**
+     * Whether this network has special rules to enable minimum difficulty blocks
+     * after a long interval between two blocks (i.e. testnet).
+     */
     public abstract boolean allowMinDifficultyBlocks();
 
     /**

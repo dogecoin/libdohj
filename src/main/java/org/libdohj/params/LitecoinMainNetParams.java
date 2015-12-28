@@ -112,8 +112,7 @@ public class LitecoinMainNetParams extends AbstractLitecoinParams {
 
     @Override
     public String getPaymentProtocolId() {
-        // TODO: CHANGE ME
-        return PAYMENT_PROTOCOL_ID_MAINNET;
+        return ID_LITE_MAINNET;
     }
 
     @Override
