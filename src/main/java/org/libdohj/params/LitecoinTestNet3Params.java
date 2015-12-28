@@ -38,9 +38,9 @@ import org.bitcoinj.script.ScriptOpCodes;
  * Litecoin versions.
  */
 public class LitecoinTestNet3Params extends AbstractLitecoinParams {
-    public static final int TESTNET_MAJORITY_WINDOW = 1000;
-    public static final int TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED = 750;
-    public static final int TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 501;
+    public static final int TESTNET_MAJORITY_WINDOW = 100;
+    public static final int TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED = 75;
+    public static final int TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 51;
 
     public LitecoinTestNet3Params() {
         super();
@@ -72,8 +72,7 @@ public class LitecoinTestNet3Params extends AbstractLitecoinParams {
             "testnet-seed.ltc.xurious.com",
             "dnsseed.wemine-testnet.com"
         };
-        // Note this is the same as the BIP32 testnet, as BIP44 makes HD wallets
-        // chain agnostic. Litecoin mainnet has its own headers for legacy reasons.
+
         bip32HeaderPub = 0x043587CF;
         bip32HeaderPriv = 0x04358394;
     }

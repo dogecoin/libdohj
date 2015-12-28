@@ -28,6 +28,7 @@ import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.util.BitSet;
 import java.util.List;
+import static org.bitcoinj.core.Coin.FIFTY_COINS;
 
 import org.libdohj.core.ScryptHash;
 import static org.libdohj.core.Utils.scryptDigest;
@@ -147,6 +148,12 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
      */
     public String getScryptHashAsString() {
         return getScryptHash().toString();
+    }
+
+    @Override
+    public Coin getBlockInflation(int height) {
+        final AltcoinNetworkParameters altParams = (AltcoinNetworkParameters) params;
+        return altParams.getBlockSubsidy(height);
     }
 
     /**

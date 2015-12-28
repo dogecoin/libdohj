@@ -17,6 +17,7 @@ package org.libdohj.params;
 
 import java.io.IOException;
 import org.bitcoinj.core.AltcoinBlock;
+import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Context;
 import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.Util;
@@ -27,7 +28,7 @@ import org.libdohj.core.AltcoinSerializer;
 
 /**
  *
- * @author jrn
+ * @author Ross Nicoll
  */
 public class AbstractDogecoinParamsTest {
     private static final AbstractDogecoinParams params = DogecoinMainNetParams.get();
@@ -134,6 +135,29 @@ public class AbstractDogecoinParamsTest {
 
         assertEquals(block480.getDifficultyTarget(), params.calculateNewDifficultyTargetInner(479, block479, block480, block239));
         assertEquals(block720.getDifficultyTarget(), params.calculateNewDifficultyTargetInner(719, block719, block720, block479));
+    }
+
+    /**
+     * Confirm subsidy rules follow Dogecoin pattern.
+     */
+    @Test
+    public void shouldCalculateSubsidy() {
+        assertEquals(Coin.COIN.multiply(1000000), params.getBlockSubsidy(0));
+        assertEquals(Coin.COIN.multiply(1000000), params.getBlockSubsidy(99999));
+        assertEquals(Coin.COIN.multiply(500000), params.getBlockSubsidy(100000));
+        assertEquals(Coin.COIN.multiply(500000), params.getBlockSubsidy(144999));
+        assertEquals(Coin.COIN.multiply(250000), params.getBlockSubsidy(145000));
+        assertEquals(Coin.COIN.multiply(250000), params.getBlockSubsidy(199999));
+        assertEquals(Coin.COIN.multiply(125000), params.getBlockSubsidy(200000));
+        assertEquals(Coin.COIN.multiply(125000), params.getBlockSubsidy(299999));
+        assertEquals(Coin.COIN.multiply(62500), params.getBlockSubsidy(300000));
+        assertEquals(Coin.COIN.multiply(62500), params.getBlockSubsidy(399999));
+        assertEquals(Coin.COIN.multiply(31250), params.getBlockSubsidy(400000));
+        assertEquals(Coin.COIN.multiply(31250), params.getBlockSubsidy(499999));
+        assertEquals(Coin.COIN.multiply(15625), params.getBlockSubsidy(500000));
+        assertEquals(Coin.COIN.multiply(15625), params.getBlockSubsidy(599999));
+        assertEquals(Coin.COIN.multiply(10000), params.getBlockSubsidy(600000));
+        assertEquals(Coin.COIN.multiply(10000), params.getBlockSubsidy(699999));
     }
 
     @Test

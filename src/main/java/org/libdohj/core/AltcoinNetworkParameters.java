@@ -16,6 +16,7 @@
 package org.libdohj.core;
 
 import org.bitcoinj.core.Block;
+import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Sha256Hash;
 
 /**
@@ -31,4 +32,10 @@ public interface AltcoinNetworkParameters {
     Sha256Hash getBlockDifficultyHash(Block block);
 
     public boolean isTestNet();
+
+    /**
+     * Get the subsidy (i.e. maximum number of coins that can be generated
+     * by the coinbase transaction) for a block at the given height.
+     */
+    public Coin getBlockSubsidy(final int height);
 }

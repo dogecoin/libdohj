@@ -94,6 +94,9 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     public static final int DOGECOIN_PROTOCOL_VERSION_AUXPOW = 70003;
     public static final int DOGECOIN_PROTOCOL_VERSION_CURRENT = 70004;
 
+    private static final Coin BASE_SUBSIDY   = COIN.multiply(500000);
+    private static final Coin STABLE_SUBSIDY = COIN.multiply(10000);
+
     public AbstractDogecoinParams(final int setDiffChangeTarget) {
         super();
         genesisBlock = createGenesis(this);
@@ -127,6 +130,21 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         }
         genesisBlock.addTransaction(t);
         return genesisBlock;
+    }
+
+    @Override
+    public Coin getBlockSubsidy(final int height) {
+        if (height < DIGISHIELD_BLOCK_HEIGHT) {
+            // Up until the Digishield hard fork, subsidy was based on the
+            // previous block hash. Rather than actually recalculating that, we
+            // simply use the maximum possible here, and let checkpoints enforce
+            // that new blocks with different values can't be mined
+            return BASE_SUBSIDY.shiftRight(height / getSubsidyDecreaseBlockCount()).multiply(2);
+        } else if (height < 600000) {
+            return BASE_SUBSIDY.shiftRight(height / getSubsidyDecreaseBlockCount());
+        } else {
+            return STABLE_SUBSIDY;
+        }
     }
 
     /** How many blocks pass between difficulty adjustment periods. After new diff algo. */

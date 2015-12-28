@@ -83,9 +83,12 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
     /** The string returned by getId() for the testnet. */
     public static final String ID_LITE_TESTNET = "org.litecoin.test";
 
-    protected Logger log = LoggerFactory.getLogger(AbstractLitecoinParams.class);
     public static final int LITECOIN_PROTOCOL_VERSION_MINIMUM = 70002;
     public static final int LITECOIN_PROTOCOL_VERSION_CURRENT = 70003;
+
+    private static final Coin BASE_SUBSIDY = COIN.multiply(50);
+
+    protected Logger log = LoggerFactory.getLogger(AbstractLitecoinParams.class);
 
     public AbstractLitecoinParams() {
         super();
@@ -96,6 +99,11 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
         packetMagic = 0xfbc0b6db;
         bip32HeaderPub = 0x0488C42E; //The 4 byte header that serializes in base58 to "xpub". (?)
         bip32HeaderPriv = 0x0488E1F4; //The 4 byte header that serializes in base58 to "xprv" (?)
+    }
+
+    @Override
+    public Coin getBlockSubsidy(final int height) {
+        return BASE_SUBSIDY.shiftRight(height / getSubsidyDecreaseBlockCount());
     }
 
     /**

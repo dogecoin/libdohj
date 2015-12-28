@@ -29,6 +29,7 @@ import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptOpCodes;
 
@@ -37,9 +38,9 @@ import org.bitcoinj.script.ScriptOpCodes;
  * goods and services.
  */
 public class LitecoinMainNetParams extends AbstractLitecoinParams {
-    public static final int MAINNET_MAJORITY_WINDOW = 1000;
-    public static final int MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED = 950;
-    public static final int MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 750;
+    public static final int MAINNET_MAJORITY_WINDOW = MainNetParams.MAINNET_MAJORITY_WINDOW;
+    public static final int MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED = MainNetParams.MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED;
+    public static final int MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = MainNetParams.MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
 
     public LitecoinMainNetParams() {
         super();
@@ -55,8 +56,8 @@ public class LitecoinMainNetParams extends AbstractLitecoinParams {
         dumpedPrivateKeyHeader = 176;
 
         this.genesisBlock = createGenesis(this);
-        spendableCoinbaseDepth = 30;
-        subsidyDecreaseBlockCount = 100000;
+        spendableCoinbaseDepth = 100;
+        subsidyDecreaseBlockCount = 840000;
 
         String genesisHash = genesisBlock.getHashAsString();
         checkState(genesisHash.equals("12a765e31ffd4059bada1e25190f6e98c99d9714d334efa41a195a7e7e04bfe2"));
@@ -73,10 +74,8 @@ public class LitecoinMainNetParams extends AbstractLitecoinParams {
             "dnsseed.koin-project.com",
             "dnsseed.weminemnc.com"
         };
-        // Note this is the same as the BIP32 testnet, as BIP44 makes HD wallets
-        // chain agnostic. Litecoin mainnet has its own headers for legacy reasons.
-        bip32HeaderPub = 0x043587CF;
-        bip32HeaderPriv = 0x04358394;
+        bip32HeaderPub = 0x0488B21E;
+        bip32HeaderPriv = 0x0488ADE4;
     }
 
     private static AltcoinBlock createGenesis(NetworkParameters params) {
