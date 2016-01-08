@@ -1,0 +1,12 @@
+# configuration for https://travis-ci.org/dogecoin/libdohj
+sudo: false
+language: java
+jdk: oraclejdk8
+install: true # remove default
+before_script:
+  - git clone https://github.com/bitcoinj/bitcoinj.git
+  - cd bitcoinj
+  - mvn -q install -DskipTests=true
+  - cd ..
+script:
+  - mvn -q clean package
