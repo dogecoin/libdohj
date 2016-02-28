@@ -1,17 +1,13 @@
 package org.bitcoinj.core;
 
-import java.io.OutputStream;
-import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
-import static org.bitcoinj.core.AuxPoW.MERGED_MINING_HEADER;
 
 import org.libdohj.core.AltcoinSerializer;
-import org.libdohj.core.AuxPoWNetworkParameters;
 import org.libdohj.params.DogecoinMainNetParams;
+import org.libdohj.params.DogecoinTestNet3Params;
 
 import static org.bitcoinj.core.Util.getBytes;
-import static org.bitcoinj.core.Utils.reverseBytes;
 import static org.junit.Assert.*;
 
 import org.junit.Before;
@@ -73,6 +69,26 @@ public class AuxPoWTest {
         AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, params.getDefaultSerializer());
         auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
+    }
+
+    /**
+     * Validate the AuxPoW header with no explicit data header in the coinbase
+     * transaction. Namecoin block #19,414
+     */
+    @Test
+    public void checkAuxPoWHeaderNoTxHeader() throws Exception {
+        // Emulate Namecoin block hashing for this test
+        final NetworkParameters namecoinLikeParams = new DogecoinTestNet3Params() {
+            @Override
+            public Sha256Hash getBlockDifficultyHash(Block block) {
+                // Namecoin uses SHA256 hashes
+                return block.getHash();
+            }
+        };
+        byte[] auxpowAsBytes = getBytes(getClass().getResourceAsStream("auxpow_header_no_tx_header.bin"));
+        AuxPoW auxpow = new AuxPoW(namecoinLikeParams, auxpowAsBytes, (ChildMessage) null, namecoinLikeParams.getDefaultSerializer());
+        auxpow.checkProofOfWork(Sha256Hash.wrap("5fb89c3b18c27bc38d351d516177cbd3504c95ca0494cbbbbd52f2fb5f2ff1ec"),
+            Utils.decodeCompactBits(0x1b00b269), true);
     }
     
     @Rule
@@ -164,8 +180,9 @@ public class AuxPoWTest {
     }
 
     /**
-     * Catch the case that the merged mine header is missing from the coinbase
-     * transaction.
+     * Catch the case that the coinbase transaction does not contain details of
+     * the merged block. In this case we make the transaction script too short
+     * for it to do so.
      */
     @Test
     public void shouldRejectIfMergedMineHeaderMissing() throws Exception {
@@ -175,11 +192,14 @@ public class AuxPoWTest {
         // This will also break the difficulty check, but as that doesn't occur
         // until the end, we can get away with it.
         final TransactionInput in = auxpow.getCoinbase().getInput(0);
-        in.getScriptBytes()[4] = 0; // Break the first byte of the header
+        final byte[] paddedScriptBytes = new byte[in.getScriptBytes().length + (AuxPoW.MAX_INDEX_PC_BACKWARDS_COMPATIBILITY + 4)];
+        Arrays.fill(paddedScriptBytes, (byte) 0);
+        System.arraycopy(in.getScriptBytes(), 8, paddedScriptBytes, (AuxPoW.MAX_INDEX_PC_BACKWARDS_COMPATIBILITY + 4), in.getScriptBytes().length - 8);
+        in.setScriptBytes(paddedScriptBytes);
         updateMerkleRootToMatchCoinbase(auxpow);
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
-        expectedEx.expectMessage("MergedMiningHeader missing from parent coinbase");
+        expectedEx.expectMessage("Aux POW chain merkle root must start in the first 20 bytes of the parent coinbase");
         auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x1b06f8f0), true);
     }
@@ -337,7 +357,7 @@ public class AuxPoWTest {
         final AuxPoW auxpow = new AuxPoW(params, auxpowAsBytes, (ChildMessage) null, params.getDefaultSerializer());
 
         expectedEx.expect(org.bitcoinj.core.VerificationException.class);
-        expectedEx.expectMessage("Hash is higher than target: a22a9b01671d639fa6389f62ecf8ce69204c8ed41d5f1a745e0c5ba7116d5b4c vs 0");
+        expectedEx.expectMessage("Hash is higher than target: 000000000003178bb23160cdbc81af53f47cae9f479acf1e69849da42fd5bfca vs 0");
         
         auxpow.checkProofOfWork(Sha256Hash.wrap("0c836b86991631d34a8a68054e2f62db919b39d1ee43c27ab3344d6aa82fa609"),
             Utils.decodeCompactBits(0x00), true);

@@ -41,6 +41,12 @@ public class AuxPoW extends ChildMessage {
         (byte) 0xfa, (byte) 0xbe, "m".getBytes()[0], "m".getBytes()[0]
     };
 
+    /**
+     * Maximum index of the merkle root hash in the coinbase transaction script,
+     * where no merged mining header is present.
+     */
+    protected static final int MAX_INDEX_PC_BACKWARDS_COMPATIBILITY = 20;
+
     private static final Logger log = LoggerFactory.getLogger(AuxPoW.class);
     private static final long serialVersionUID = -8567546957352643140L;
 
@@ -290,44 +296,49 @@ public class AuxPoW extends ChildMessage {
 
         // Check that the same work is not submitted twice to our chain, by
         // confirming that the child block hash is in the coinbase merkle tree
-        int pcHeader = -1;
+        int pcHead = -1;
         int pc = -1;
 
         for (int scriptIdx = 0; scriptIdx < script.length; scriptIdx++) {
             if (arrayMatch(script, scriptIdx, MERGED_MINING_HEADER)) {
                 // Enforce only one chain merkle root by checking that a single instance of the merged
                 // mining header exists just before.
-                if (pcHeader >= 0) {
+                if (pcHead >= 0) {
                     if (throwException) {
                         throw new VerificationException("Multiple merged mining headers in coinbase");
                     }
                     return false;
                 }
-                pcHeader = scriptIdx;
+                pcHead = scriptIdx;
             } else if (arrayMatch(script, scriptIdx, vchRootHash)) {
                 pc = scriptIdx;
             }
         }
 
-        if (-1 == pcHeader) {
-            if (throwException) {
-                throw new VerificationException("MergedMiningHeader missing from parent coinbase");
-            }
-            return false;
-        }
-
-        if (-1 == pc) {
+        if (pc == -1) {
             if (throwException) {
                 throw new VerificationException("Aux POW missing chain merkle root in parent coinbase");
             }
             return false;
         }
 
-        if (pcHeader + MERGED_MINING_HEADER.length != pc) {
-            if (throwException) {
-                throw new VerificationException("Merged mining header is not just before chain merkle root");
+        if (pcHead != -1) {
+            if (pcHead + MERGED_MINING_HEADER.length != pc) {
+                if (throwException) {
+                    throw new VerificationException("Merged mining header is not just before chain merkle root");
+                }
+                return false;
             }
-            return false;
+        } else {
+            // For backward compatibility.
+            // Enforce only one chain merkle root by checking that it starts early in the coinbase.
+            // 8-12 bytes are enough to encode extraNonce and nBits.
+            if (pc > MAX_INDEX_PC_BACKWARDS_COMPATIBILITY) {
+                if (throwException) {
+                    throw new VerificationException("Aux POW chain merkle root must start in the first 20 bytes of the parent coinbase");
+                }
+                return false;
+            }
         }
 
         // Ensure we are at a deterministic point in the merkle leaves by hashing
@@ -361,12 +372,12 @@ public class AuxPoW extends ChildMessage {
             return false;
         }
 
-        BigInteger h = altcoinParams.getBlockDifficultyHash(getParentBlockHeader())
-            .toBigInteger();
-        if (h.compareTo(target) > 0) {
+        Sha256Hash hash = altcoinParams.getBlockDifficultyHash(getParentBlockHeader());
+        BigInteger hashVal = hash.toBigInteger();
+        if (hashVal.compareTo(target) > 0) {
             // Proof of work check failed!
             if (throwException) {
-                throw new VerificationException("Hash is higher than target: " + getParentBlockHeader().getHashAsString() + " vs "
+                throw new VerificationException("Hash is higher than target: " + hash.toString() + " vs "
                         + target.toString(16));
             }
             return false;
