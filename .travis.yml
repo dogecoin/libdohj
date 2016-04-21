@@ -6,7 +6,7 @@ install: true # remove default
 before_script:
   - git clone https://github.com/bitcoinj/bitcoinj.git
   - cd bitcoinj
-  - mvn -q install -DskipTests=true
+  - mvn -q install
   - cd ..
 script:
   - mvn -q clean package
