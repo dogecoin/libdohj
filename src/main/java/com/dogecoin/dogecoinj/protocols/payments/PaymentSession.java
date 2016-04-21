@@ -26,6 +26,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import org.bitcoin.protocols.payments.Protos;
+import org.bitcoinj.wallet.SendRequest;
 
 import javax.annotation.Nullable;
 
@@ -291,13 +292,13 @@ public class PaymentSession {
     }
 
     /**
-     * Returns a {@link Wallet.SendRequest} suitable for broadcasting to the network.
+     * Returns a {@link SendRequest} suitable for broadcasting to the network.
      */
-    public Wallet.SendRequest getSendRequest() {
+    public SendRequest getSendRequest() {
         Transaction tx = new Transaction(params);
         for (Protos.Output output : paymentDetails.getOutputsList())
             tx.addOutput(new TransactionOutput(params, tx, Coin.valueOf(output.getAmount()), output.getScript().toByteArray()));
-        return Wallet.SendRequest.forTx(tx).fromPaymentDetails(paymentDetails);
+        return SendRequest.forTx(tx).fromPaymentDetails(paymentDetails);
     }
 
     /**
