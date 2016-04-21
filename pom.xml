@@ -90,7 +90,7 @@
         <dependency>
             <groupId>org.bitcoinj</groupId>
             <artifactId>bitcoinj-core</artifactId>
-            <version>0.14-SNAPSHOT</version>
+            <version>0.15-SNAPSHOT</version>
         </dependency>
     </dependencies>
     <properties>
