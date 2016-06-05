@@ -17,7 +17,7 @@
     <!-- Dummy block to make Maven Central happy: authors list is in AUTHORS -->
     <developers>
         <developer>
-            <name>The bitcoinj and libdohj teams.</name>
+            <name>The libdohj team.</name>
             <email>info@dogecoin.com</email>
         </developer>
     </developers>
@@ -90,7 +90,7 @@
         <dependency>
             <groupId>org.bitcoinj</groupId>
             <artifactId>bitcoinj-core</artifactId>
-            <version>0.14-SNAPSHOT</version>
+            <version>0.14.2</version>
         </dependency>
     </dependencies>
     <properties>

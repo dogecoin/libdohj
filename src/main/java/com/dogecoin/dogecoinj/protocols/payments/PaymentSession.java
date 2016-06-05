@@ -16,6 +16,7 @@ package com.dogecoin.dogecoinj.protocols.payments;
 
 import com.dogecoin.dogecoinj.protocols.payments.PaymentProtocol.PkiVerificationData;
 import org.bitcoinj.core.*;
+import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.crypto.TrustStoreLoader;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.uri.BitcoinURI;
@@ -293,11 +294,11 @@ public class PaymentSession {
     /**
      * Returns a {@link Wallet.SendRequest} suitable for broadcasting to the network.
      */
-    public Wallet.SendRequest getSendRequest() {
+    public SendRequest getSendRequest() {
         Transaction tx = new Transaction(params);
         for (Protos.Output output : paymentDetails.getOutputsList())
             tx.addOutput(new TransactionOutput(params, tx, Coin.valueOf(output.getAmount()), output.getScript().toByteArray()));
-        return Wallet.SendRequest.forTx(tx).fromPaymentDetails(paymentDetails);
+        return SendRequest.forTx(tx).fromPaymentDetails(paymentDetails);
     }
 
     /**
