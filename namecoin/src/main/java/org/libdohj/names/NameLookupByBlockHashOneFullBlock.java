@@ -42,6 +42,13 @@ public class NameLookupByBlockHashOneFullBlock implements NameLookupByBlockHash 
         // The full block hasn't been verified in any way!
         // So let's do that now.
         
+        if (! nameFullBlock.getHash().equals(blockHash)) {
+            throw new Exception("Block hash mismatch!");
+        }
+        
+        // Now we know that the received block actually does have a header that matches the hash that we requested.
+        // However, that doesn't mean that the block's contents are valid.
+        
         final EnumSet<Block.VerifyFlag> flags = EnumSet.noneOf(Block.VerifyFlag.class);
         nameFullBlock.verify(-1, flags);
         
