@@ -52,7 +52,10 @@ public class LitecoinRegTestParams extends LitecoinTestNet3Params {
     private static Block genesis;
 
 
-    /*
+    /* Extract from Litecoin source code, definition of regtest params.
+    Commit Hash: 3b4ed770f88229b11bf62b90f128f3054b17ab36
+    File: src/chainparams.cpp
+
         CRegTestParams() {
             strNetworkID = "regtest";
             consensus.nSubsidyHalvingInterval = 150;
@@ -117,8 +120,7 @@ public class LitecoinRegTestParams extends LitecoinTestNet3Params {
             base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
             base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
         }
-        */
-
+    */
     @Override
     public Block getGenesisBlock() {
         synchronized (LitecoinRegTestParams.class) {
