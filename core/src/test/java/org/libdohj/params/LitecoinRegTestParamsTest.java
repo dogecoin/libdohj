@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 
 /**
  *
- * @author Ross Nicoll
+ * @author Mike Rosseel
  */
 public class LitecoinRegTestParamsTest {
     private static final LitecoinRegTestParams params = LitecoinRegTestParams.get();
