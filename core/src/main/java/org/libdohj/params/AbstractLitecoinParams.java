@@ -16,26 +16,16 @@
 
 package org.libdohj.params;
 
-import java.math.BigInteger;
-import org.bitcoinj.core.AltcoinBlock;
-
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Coin;
-import static org.bitcoinj.core.Coin.COIN;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.VerificationException;
+import org.bitcoinj.core.*;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
-import org.bitcoinj.core.StoredBlock;
-import org.bitcoinj.core.Utils;
 import org.bitcoinj.utils.MonetaryFormat;
 import org.libdohj.core.AltcoinNetworkParameters;
 import org.libdohj.core.AltcoinSerializer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.math.BigInteger;
+import static org.bitcoinj.core.Coin.COIN;
 
 /**
  * Common parameters for Litecoin networks.
@@ -51,7 +41,7 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
     public static final int LITE_TARGET_TIMESPAN = (int) (3.5 * 24 * 60 * 60); // 3.5 days
     public static final int LITE_TARGET_SPACING = (int) (2.5 * 60); // 2.5 minutes
     public static final int LITE_INTERVAL = LITE_TARGET_TIMESPAN / LITE_TARGET_SPACING;
-    
+
     /**
      * The maximum number of coins to be generated
      */
@@ -82,6 +72,8 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
     public static final String ID_LITE_MAINNET = "org.litecoin.production";
     /** The string returned by getId() for the testnet. */
     public static final String ID_LITE_TESTNET = "org.litecoin.test";
+    /** The string returned by getId() for regtest. */
+    public static final String ID_LITE_REGTEST = "regtest";
 
     public static final int LITECOIN_PROTOCOL_VERSION_MINIMUM = 70002;
     public static final int LITECOIN_PROTOCOL_VERSION_CURRENT = 70003;
@@ -249,7 +241,7 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
     }
 
     /**
-     * 
+     *
      * @param previousHeight Height of the block immediately previous to the one we're calculating difficulty of.
      * @param previousBlockTime Time of the block immediately previous to the one we're calculating difficulty of.
      * @param lastDifficultyTarget Compact difficulty target of the last retarget block.
