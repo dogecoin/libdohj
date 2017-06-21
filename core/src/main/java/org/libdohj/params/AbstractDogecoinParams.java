@@ -16,32 +16,21 @@
 
 package org.libdohj.params;
 
-import java.io.ByteArrayOutputStream;
-import java.math.BigInteger;
-
-import org.bitcoinj.core.AltcoinBlock;
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Coin;
-import static org.bitcoinj.core.Coin.COIN;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.VerificationException;
+import org.bitcoinj.core.*;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptOpCodes;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
 import org.bitcoinj.utils.MonetaryFormat;
-
+import org.libdohj.core.AltcoinSerializer;
+import org.libdohj.core.AuxPoWNetworkParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.StoredBlock;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.TransactionInput;
-import org.bitcoinj.core.TransactionOutput;
-import org.bitcoinj.core.Utils;
-import org.libdohj.core.AltcoinSerializer;
-import org.libdohj.core.AuxPoWNetworkParameters;
+import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
+
+import static org.bitcoinj.core.Coin.COIN;
 
 /**
  * Common parameters for Dogecoin networks.
@@ -85,6 +74,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     public static final String ID_DOGE_MAINNET = "org.dogecoin.production";
     /** The string returned by getId() for the testnet. */
     public static final String ID_DOGE_TESTNET = "org.dogecoin.test";
+    public static final String ID_DOGE_REGTEST = "org.dogecoin.regtest";
 
     protected final int newInterval;
     protected final int newTargetTimespan;
@@ -323,7 +313,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     /**
      * Calculate the difficulty target expected for the next block after a normal
      * recalculation interval.
-     * 
+     *
      * @param previousHeight Height of the block immediately previous to the one we're calculating difficulty of.
      * @param previousBlockTime Time of the block immediately previous to the one we're calculating difficulty of.
      * @param lastDifficultyTarget Compact difficulty target of the last retarget block.
