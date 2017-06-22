@@ -117,7 +117,7 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
 
     @Override
     public Coin getMinNonDustOutput() {
-        return Coin.COIN;
+        return Coin.valueOf(100000);
     }
 
     @Override
