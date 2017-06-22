@@ -41,7 +41,7 @@ public class DogecoinRegTestParams extends DogecoinTestNet3Params {
         subsidyDecreaseBlockCount = 150;
         port = 18444;
         id = ID_DOGE_REGTEST;
-       // packetMagic = 0xfabfb5da;
+        packetMagic = 0xfabfb5da;
     }
 
     @Override
@@ -60,7 +60,7 @@ public class DogecoinRegTestParams extends DogecoinTestNet3Params {
                 genesis.setDifficultyTarget(0x207fffffL);
                 genesis.setTime(1296688602L);
                 checkState(genesis.getVersion() == 1);
-                checkState(genesis.getHashAsString().toLowerCase().equals("0x3d2160a3b5dc4a9d62e7e66a295f70313ac808440ef7400d6c0772171ce973a5"));
+                checkState(genesis.getHashAsString().toLowerCase().equals("3d2160a3b5dc4a9d62e7e66a295f70313ac808440ef7400d6c0772171ce973a5"));
                 genesis.verifyHeader();
             }
             return genesis;
