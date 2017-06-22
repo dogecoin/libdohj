@@ -18,7 +18,9 @@
 package org.bitcoinj.core;
 
 import org.libdohj.core.AltcoinNetworkParameters;
-import com.google.common.base.Preconditions;
+import org.libdohj.core.AuxPoWNetworkParameters;
+import org.libdohj.core.ScryptHash;
+import org.libdohj.params.AbstractLitecoinParams;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -28,13 +30,9 @@ import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.util.BitSet;
 import java.util.List;
-import static org.bitcoinj.core.Coin.FIFTY_COINS;
-
-import org.libdohj.core.ScryptHash;
-import static org.libdohj.core.Utils.scryptDigest;
 
 import static org.bitcoinj.core.Utils.reverseBytes;
-import org.libdohj.core.AuxPoWNetworkParameters;
+import static org.libdohj.core.Utils.scryptDigest;
 
 /**
  * <p>A block is a group of transactions, and is one of the fundamental data structures of the Bitcoin system.
@@ -172,8 +170,8 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
 
     /**
      * Return flags from block version of an AuxPoW-enabled chain.
-     * 
-     * @return flags as a bitset. 
+     *
+     * @return flags as a bitset.
      */
     public BitSet getVersionFlags() {
         final BitSet bitset = new BitSet(BYTE_BITS);
@@ -207,7 +205,9 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     @Override
     public long getVersion() {
         // TODO: Can we cache the individual parts on parse?
-        if (this.params instanceof AltcoinNetworkParameters) {
+        if(this.params instanceof AbstractLitecoinParams) {
+            return super.getVersion();
+        }else if (this.params instanceof AltcoinNetworkParameters) {
             // AuxPoW networks use the higher block version bits for flags and
             // chain ID.
             return getBaseVersion(super.getVersion());
