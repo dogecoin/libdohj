@@ -77,11 +77,11 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
     
     protected Logger log = LoggerFactory.getLogger(NameLookupLatestLevelDBTransactionCache.class);
     
-    public NameLookupLatestLevelDBTransactionCache (Context context, File directory, BlockChain chain, BlockStore store, PeerGroup peerGroup) throws Exception {
+    public NameLookupLatestLevelDBTransactionCache (Context context, File directory, BlockChain chain, BlockStore store, PeerGroup peerGroup) throws IOException {
         this(context, directory, JniDBFactory.factory, chain, store, peerGroup);
     }
     
-    public NameLookupLatestLevelDBTransactionCache (Context context, File directory, DBFactory dbFactory, BlockChain chain, BlockStore store, PeerGroup peerGroup) throws Exception {
+    public NameLookupLatestLevelDBTransactionCache (Context context, File directory, DBFactory dbFactory, BlockChain chain, BlockStore store, PeerGroup peerGroup) throws IOException {
         this.chain = chain;
         this.store = store;
         this.peerGroup = peerGroup;
@@ -96,12 +96,8 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
         try {
             tryOpen(directory, dbFactory, options);
         } catch (IOException e) {
-            try {
-                dbFactory.repair(directory, options);
-                tryOpen(directory, dbFactory, options);
-            } catch (IOException e1) {
-                throw new Exception(e1);
-            }
+            dbFactory.repair(directory, options);
+            tryOpen(directory, dbFactory, options);
         }
         
         chain.addNewBestBlockListener(Threading.SAME_THREAD, this);
@@ -165,7 +161,7 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
             // So let's do that now.
             
             if (! nameFullBlock.getHash().equals(blockHash)) {
-                throw new Exception("Block hash mismatch!");
+                throw new VerificationException("Block hash mismatch!");
             }
             
             // Now we know that the received block actually does match the hash that we requested.
@@ -186,6 +182,12 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
                             pendingBlockTransactions.put(block.getHeader().getHash(), tx);
                         }
                     } catch (ScriptException e) {
+                        // Our threat model is lightweight SPV, which means we
+                        // don't attempt to reject a blockchain due to a single
+                        // invalid transaction.  As such, if we see a
+                        // ScriptException, we just discard the transaction
+                        // (and log a warning) rather than rejecting the block.
+                        log.warn("Error checking TransactionOutput for name_anyupdate script!", e);
                         continue;
                     }
                 }
@@ -237,9 +239,9 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
     }
     
     // TODO: stop duplicating code from the other NameLookupLatest implementations
-    protected void verifyHeightTrustworthy(int height) throws Exception {
+    protected void verifyHeightTrustworthy(int height) throws IllegalArgumentException, VerificationException {
         if (height < 1) {
-            throw new Exception("Nonpositive block height; not trustworthy!");
+            throw new IllegalArgumentException("Nonpositive block height; not trustworthy!");
         }
         
         int headHeight = chain.getChainHead().getHeight();
@@ -249,12 +251,12 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
         // TODO: optionally use transaction chains (with signature checks) to verify transactions without 12 confirmations
         // TODO: the above needs to be optional, because some applications (e.g. cert transparency) require confirmations
         if (confirmations < 12) {
-            throw new Exception("Block does not yet have 12 confirmations; not trustworthy!");
+            throw new VerificationException("Block does not yet have 12 confirmations; not trustworthy!");
         }
         
         // TODO: check for off-by-one errors on this line
         if (confirmations >= 36000) {
-            throw new Exception("Block has expired; not trustworthy!");
+            throw new VerificationException("Block has expired; not trustworthy!");
         }
     }
     
@@ -295,35 +297,27 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
         db.put(CHAIN_HEAD_KEY, ByteBuffer.allocate(4).putInt(chainHead).array());
     }
     
-    public synchronized void close() throws Exception {
-        try {
-            db.close();
-        } catch (IOException e) {
-            throw new Exception(e);
-        }
+    public synchronized void close() throws IOException {
+        db.close();
     }
     
     /** Erases the contents of the database (but NOT the underlying files themselves) and then reinitialises with the genesis block. */
-    protected synchronized void reset() throws Exception {
+    protected synchronized void reset() throws IOException {
+        WriteBatch batch = db.createWriteBatch();
         try {
-            WriteBatch batch = db.createWriteBatch();
+            DBIterator it = db.iterator();
             try {
-                DBIterator it = db.iterator();
-                try {
-                    it.seekToFirst();
-                    while (it.hasNext())
-                        batch.delete(it.next().getKey());
-                    db.write(batch);
-                } finally {
-                    it.close();
-                }
+                it.seekToFirst();
+                while (it.hasNext())
+                    batch.delete(it.next().getKey());
+                db.write(batch);
             } finally {
-                batch.close();
+                it.close();
             }
-            initStoreIfNeeded();
-        } catch (IOException e) {
-            throw new Exception(e);
+        } finally {
+            batch.close();
         }
+        initStoreIfNeeded();
     }
     
     protected synchronized void destroy() throws IOException {
@@ -397,6 +391,12 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
                     pendingBlockTransactions.put(block.getHeader().getHash(), tx);
                 }
             } catch (ScriptException e) {
+                // Our threat model is lightweight SPV, which means we
+                // don't attempt to reject a blockchain due to a single
+                // invalid transaction.  As such, if we see a
+                // ScriptException, we just discard the transaction
+                // (and log a warning) rather than rejecting the block.
+                log.warn("Error checking TransactionOutput for name_anyupdate script!", e);
                 continue;
             }
         }
