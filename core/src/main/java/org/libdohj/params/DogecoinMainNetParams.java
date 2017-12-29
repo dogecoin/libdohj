@@ -85,7 +85,6 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         checkpoints.put(400002, Sha256Hash.wrap("a5021d69a83f39aef10f3f24f932068d6ff322c654d20562def3fac5703ce3aa"));
 
         dnsSeeds = new String[] {
-                "seed.dogecoin.com",
                 "seed.multidoge.org",
                 "seed2.multidoge.org",
                 "seed.doger.dogecoin.com"
