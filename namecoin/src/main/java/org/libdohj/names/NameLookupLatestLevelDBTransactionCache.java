@@ -22,6 +22,7 @@ import org.libdohj.script.NameScript;
 import org.bitcoinj.core.AbstractBlockChain;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.BlockChain;
+import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Context;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.PeerGroup;
@@ -51,6 +52,7 @@ import com.google.common.collect.SetMultimap;
 
 import java.io.*;
 import java.nio.*;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
@@ -205,7 +207,7 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
                         Script scriptPubKey = output.getScriptPubKey();
                         NameScript ns = new NameScript(scriptPubKey);
                         if(ns.isNameOp() && ns.isAnyUpdate() ) {
-                            putNameTransaction(ns.getOpName().data, tx, height);
+                            putNameScript(scriptPubKey, ns, height);
                         }
                     } catch (ScriptException e) {
                         continue;
@@ -219,21 +221,23 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
         setChainHead(block.getHeight());
     }
     
-    protected synchronized void putNameTransaction(final byte[] nameBytes, Transaction tx, int height) {
+    protected synchronized void putNameScript(Script scriptPubKey, NameScript ns, int height) throws UnsupportedEncodingException {
         
         // TODO: check if name is relevant (e.g. namespace is id/, has zeronet field)
         
-        byte[] headerBytes = "NameTx".getBytes();
-        // name goes here
+        // key format:
+        byte[] headerBytes = "NamScr".getBytes("ISO-8859-1");
+        byte[] nameBytes = ns.getOpName().data;
         
+        // record format:
         // height goes here
-        byte[] txBytes = tx.bitcoinSerialize();
+        byte[] scriptBytes = scriptPubKey.getProgram();
         
         ByteBuffer keyBuffer = ByteBuffer.allocate(headerBytes.length + nameBytes.length);
-        ByteBuffer recordBuffer = ByteBuffer.allocate(4 + txBytes.length);
+        ByteBuffer recordBuffer = ByteBuffer.allocate(4 + scriptBytes.length);
         
         keyBuffer.put(headerBytes).put(nameBytes);
-        recordBuffer.putInt(height).put(txBytes);
+        recordBuffer.putInt(height).put(scriptBytes);
         
         db.put(keyBuffer.array(), recordBuffer.array());
     }
@@ -264,7 +268,7 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
     @Override
     public Transaction getNameTransaction(String name, String identity) throws Exception {
         
-        byte[] headerBytes = "NameTx".getBytes("ISO-8859-1");
+        byte[] headerBytes = "NamScr".getBytes("ISO-8859-1");
         byte[] nameBytes = name.getBytes("ISO-8859-1");
         // name goes here
         
@@ -281,7 +285,11 @@ public class NameLookupLatestLevelDBTransactionCache implements NameLookupLatest
         
         verifyHeightTrustworthy(height);
         
-        Transaction tx = new Transaction(params, recordBytes, 4);
+        byte[] scriptPubKeyBytes = Arrays.copyOfRange(recordBytes, 4, recordBytes.length);
+
+        Transaction tx = new Transaction(params);
+        Script scriptPubKey = new Script(scriptPubKeyBytes);
+        tx.addOutput(Coin.CENT, scriptPubKey);
         
         tx.getConfidence().setAppearedAtChainHeight(height); // TODO: test this line
         tx.getConfidence().setDepthInBlocks(chain.getChainHead().getHeight() - height + 1);
