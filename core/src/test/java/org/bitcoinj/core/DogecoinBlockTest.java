@@ -95,7 +95,7 @@ public class DogecoinBlockTest {
         final AuxPoW auxpow = block.getAuxPoW();
         assertNotNull(auxpow);
         final Transaction auxpowCoinbase = auxpow.getCoinbase();
-        assertEquals("e5422732b20e9e7ecc243427abbe296e9528d308bb111aae8d30c3465e442de8", auxpowCoinbase.getHashAsString());
+        assertEquals("e5422732b20e9e7ecc243427abbe296e9528d308bb111aae8d30c3465e442de8", auxpowCoinbase.getTxId().toString());
         final Block parentBlock = auxpow.getParentBlockHeader();
         assertEquals("45df41e40aba5b2a03d08bd1202a1c02ef3954d8aa22ea6c5ae62fd00f290ea9", parentBlock.getHashAsString());
         assertNull(parentBlock.getTransactions());
@@ -182,6 +182,6 @@ public class DogecoinBlockTest {
         byte[] payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block371337.bin"));
         AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
         final AltcoinBlock block = (AltcoinBlock)serializer.makeBlock(payload);
-        assertEquals(true, block.checkProofOfWork(true));
+        assertTrue(block.checkProofOfWork(true));
     }
 }

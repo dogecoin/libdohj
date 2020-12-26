@@ -35,14 +35,13 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         dumpedPrivateKeyHeader = 158; //This is always addressHeader + 128
         addressHeader = 30;
         p2shHeader = 22;
-        acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
         port = 22556;
         packetMagic = 0xc0c0c0c0;
         // Note that while BIP44 makes HD wallets chain-agnostic, for legacy
         // reasons we use a Doge-specific header for main net. At some point
         // we'll add independent headers for BIP32 legacy and BIP44.
-        bip32HeaderPub = 0x02facafd; //The 4 byte header that serializes in base58 to "dgub".
-        bip32HeaderPriv =  0x02fac398; //The 4 byte header that serializes in base58 to "dgpv".
+        bip32HeaderP2PKHpub = 0x02facafd; //The 4 byte header that serializes in base58 to "dgub".
+        bip32HeaderP2PKHpriv =  0x02fac398; //The 4 byte header that serializes in base58 to "dgpv".
         genesisBlock.setDifficultyTarget(0x1e0ffff0L);
         genesisBlock.setTime(1386325540L);
         genesisBlock.setNonce(99943L);

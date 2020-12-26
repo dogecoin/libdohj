@@ -98,8 +98,8 @@ public abstract class AbstractNamecoinParams extends NetworkParameters implement
         maxTarget = Utils.decodeCompactBits(0x1e0fffffL); // TODO: figure out the Namecoin value of this
         
         // BIP 43 recommends using these values regardless of which blockchain is in use.
-        bip32HeaderPub = 0x0488B21E; //The 4 byte header that serializes in base58 to "xpub".
-        bip32HeaderPriv = 0x0488ADE4; //The 4 byte header that serializes in base58 to "xprv"
+        bip32HeaderP2PKHpub = 0x0488B21E; //The 4 byte header that serializes in base58 to "xpub".
+        bip32HeaderP2PKHpriv = 0x0488ADE4; //The 4 byte header that serializes in base58 to "xprv"
     }
 
     private static AltcoinBlock createGenesis(NetworkParameters params) {

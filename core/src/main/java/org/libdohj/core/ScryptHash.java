@@ -15,21 +15,74 @@
  */
 package org.libdohj.core;
 
-import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.Sha256Hash;
+import com.google.common.primitives.Ints;
 
-/**
- * Scrypt hash. Currently extends Sha256Hash (so no real type safety is provided),
- * but in time the two classes should have a common superclass rather than one
- * extending the other directly.
- */
-public class ScryptHash extends Sha256Hash {
+import java.io.Serializable;
+import java.util.Arrays;
 
-    public ScryptHash(byte[] rawHashBytes) {
-        super(rawHashBytes);
+import static com.google.common.base.Preconditions.checkArgument;
+
+public class ScryptHash implements Serializable, Comparable<ScryptHash> {
+    public static final int LENGTH = 32; // bytes
+
+    private final byte[] bytes;
+
+    private ScryptHash(byte[] rawHashBytes) {
+        checkArgument(rawHashBytes.length == LENGTH);
+        this.bytes = rawHashBytes;
     }
-    
-    public ScryptHash(String hexString) {
-        super(hexString);
+
+    /**
+     * Creates a new instance that wraps the given hash value.
+     *
+     * @param rawHashBytes the raw hash bytes to wrap
+     * @return a new instance
+     * @throws IllegalArgumentException if the given array length is not exactly 32
+     */
+    public static ScryptHash wrap(byte[] rawHashBytes) {
+        return new ScryptHash(rawHashBytes);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        return Arrays.equals(bytes, ((ScryptHash)o).bytes);
+    }
+
+    /**
+     * Returns the last four bytes of the wrapped hash. This should be unique enough to be a suitable hash code even for
+     * blocks, where the goal is to try and get the first bytes to be zeros (i.e. the value as a big integer lower
+     * than the target value).
+     */
+    @Override
+    public int hashCode() {
+        // Use the last 4 bytes, not the first 4 which are often zeros in Bitcoin.
+        return Ints.fromBytes(bytes[LENGTH - 4], bytes[LENGTH - 3], bytes[LENGTH - 2], bytes[LENGTH - 1]);
+    }
+
+    @Override
+    public String toString() {
+        return org.bitcoinj.core.Utils.HEX.encode(bytes);
+    }
+
+    /**
+     * Returns the internal byte array, without defensively copying. Therefore do NOT modify the returned array.
+     */
+    public byte[] getBytes() {
+        return bytes;
+    }
+
+    @Override
+    public int compareTo(final ScryptHash other) {
+        for (int i = LENGTH - 1; i >= 0; i--) {
+            final int thisByte = this.bytes[i] & 0xff;
+            final int otherByte = other.bytes[i] & 0xff;
+            if (thisByte > otherByte)
+                return 1;
+            if (thisByte < otherByte)
+                return -1;
+        }
+        return 0;
     }
 }

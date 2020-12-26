@@ -37,8 +37,6 @@ public class NamecoinMainNetParams extends AbstractNamecoinParams {
         dumpedPrivateKeyHeader = 180; //This is always addressHeader + 128
         addressHeader = 52;
         p2shHeader = 13;
-        //acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
-        acceptableAddressCodes = new int[] { addressHeader }; // Namecoin doesn't yet enforce P2SH, so we disable it for now.
         port = 8334;
         packetMagic = 0xf9beb4fe;
         

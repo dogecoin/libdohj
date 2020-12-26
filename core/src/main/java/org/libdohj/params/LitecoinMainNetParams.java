@@ -52,7 +52,6 @@ public class LitecoinMainNetParams extends AbstractLitecoinParams {
         port = 9333;
         addressHeader = 48;
         p2shHeader = 5;
-        acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
         dumpedPrivateKeyHeader = 176;
 
         this.genesisBlock = createGenesis(this);
@@ -74,8 +73,8 @@ public class LitecoinMainNetParams extends AbstractLitecoinParams {
             "dnsseed.koin-project.com",
             "dnsseed.weminemnc.com"
         };
-        bip32HeaderPub = 0x0488B21E;
-        bip32HeaderPriv = 0x0488ADE4;
+        bip32HeaderP2PKHpub = 0x0488B21E;
+        bip32HeaderP2PKHpriv = 0x0488ADE4;
     }
 
     private static AltcoinBlock createGenesis(NetworkParameters params) {

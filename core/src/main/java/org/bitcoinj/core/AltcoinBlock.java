@@ -117,10 +117,8 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         try {
             ByteArrayOutputStream bos = new UnsafeByteArrayOutputStream(HEADER_SIZE);
             writeHeader(bos);
-            return new ScryptHash(reverseBytes(scryptDigest(bos.toByteArray())));
-        } catch (IOException e) {
-            throw new RuntimeException(e); // Cannot happen.
-        } catch (GeneralSecurityException e) {
+            return ScryptHash.wrap(reverseBytes(scryptDigest(bos.toByteArray())));
+        } catch (IOException | GeneralSecurityException e) {
             throw new RuntimeException(e); // Cannot happen.
         }
     }
@@ -275,11 +273,12 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
             }
 
             final AltcoinNetworkParameters altParams = (AltcoinNetworkParameters)this.params;
-            BigInteger h = altParams.getBlockDifficultyHash(this).toBigInteger();
+            final Sha256Hash blockDifficultyHash = altParams.getBlockDifficultyHash(this);
+            BigInteger h = blockDifficultyHash.toBigInteger();
             if (h.compareTo(target) > 0) {
                 // Proof of work check failed!
                 if (throwException)
-                    throw new VerificationException("Hash is higher than target: " + getHashAsString() + " vs "
+                    throw new VerificationException("Hash is higher than target: " + blockDifficultyHash.toString() + " vs "
                             + target.toString(16));
                 else
                     return false;
