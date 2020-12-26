@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.libdohj</groupId>
+        <artifactId>libdohj-parent</artifactId>
+        <version>0.14.7</version>
+    </parent>
     <groupId>org.libdohj</groupId>
     <artifactId>libdohj-namecoin</artifactId>
-    <version>0.14-SNAPSHOT</version>
+    <version>0.14.7</version>
     <packaging>jar</packaging>
 
     <licenses>
@@ -68,7 +73,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.7</version>
+            <version>1.7.20</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -90,7 +95,7 @@
         <dependency>
             <groupId>org.bitcoinj</groupId>
             <artifactId>bitcoinj-core</artifactId>
-            <version>0.14.2</version>
+            <version>0.14.7</version>
         </dependency>
         <dependency>
             <groupId>org.libdohj</groupId>
