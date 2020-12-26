@@ -23,10 +23,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Arrays;
 
 
 /**
@@ -122,7 +123,7 @@ public class AuxPoW extends ChildMessage {
     @Override
     protected void parse() throws ProtocolException {
         cursor = offset;
-        transaction = new Transaction(params, payload, cursor, this, serializer, Message.UNKNOWN_LENGTH);
+        transaction = new Transaction(params, payload, cursor, this, serializer, Message.UNKNOWN_LENGTH, null);
         cursor += transaction.getOptimalEncodingMessageSize();
         optimalEncodingMessageSize = transaction.getOptimalEncodingMessageSize();        
 
@@ -155,15 +156,15 @@ public class AuxPoW extends ChildMessage {
 
     @Override
     public String toString() {
-        return toString(null);
+        return toString(null, null);
     }
 
     /**
      * A human readable version of the transaction useful for debugging. The format is not guaranteed to be stable.
      * @param chain If provided, will be used to estimate lock times (if set). Can be null.
      */
-    public String toString(@Nullable AbstractBlockChain chain) {
-		return transaction.toString(chain);
+    public String toString(@Nullable AbstractBlockChain chain, @Nullable CharSequence indent) {
+		return transaction.toString(chain, indent);
     }
 
     @Override

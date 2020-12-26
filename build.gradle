@@ -13,5 +13,5 @@ allprojects {
         jcenter()
     }
 
-    group = 'org.bitcoinj'
+    group = 'com.dogecoin'
 }

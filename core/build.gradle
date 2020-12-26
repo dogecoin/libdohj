@@ -1,11 +1,11 @@
 apply plugin: 'java'
-apply plugin: 'com.google.protobuf'
 apply plugin: 'maven'
 
 version = '0.15-SNAPSHOT'
-archivesBaseName = 'bitcoinj-core'
+archivesBaseName = 'libdohj-core'
 
 dependencies {
+    compile 'org.bitcoinj:bitcoinj-core:0.15.9'
     compile 'com.madgag.spongycastle:core:1.58.0.0'
     implementation 'com.lambdaworks:scrypt:1.4.0'
     implementation 'com.google.guava:guava:24.0-android'
@@ -24,12 +24,8 @@ dependencies {
 
 sourceCompatibility = 1.7
 
-protobuf {
-    generatedFilesBaseDir = new File(projectDir, '/src') // workaround for '$projectDir/src'
-}
-
 test {
-    exclude 'org/bitcoinj/net/NetworkAbstractionTests*'
+    exclude 'org/libdohj/net/NetworkAbstractionTests*'
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {

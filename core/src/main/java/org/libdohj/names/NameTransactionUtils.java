@@ -18,7 +18,7 @@ package org.libdohj.names;
 
 import org.libdohj.script.NameScript;
 
-import org.bitcoinj.core.ScriptException;
+import org.bitcoinj.script.ScriptException;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.script.Script;

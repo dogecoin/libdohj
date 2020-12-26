@@ -1,4 +1,2 @@
 include 'core'
-include 'tools'
-include 'examples'
-include 'wallettemplate'
+include 'namecoin'
