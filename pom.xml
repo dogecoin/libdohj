@@ -3,11 +3,12 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.libdohj</groupId>
     <artifactId>libdohj-parent</artifactId>
-    <version>0.14-SNAPSHOT</version>
+    <version>0.14.7</version>
     <packaging>pom</packaging>
 
     <modules>
         <module>core</module>
+        <module>namecoin</module>
     </modules>
 
     <parent>
@@ -145,7 +146,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.7</version>
+            <version>1.7.20</version>
         </dependency>
         <!-- libdohj consumers are expected to provide their own SLF4J adapters
         such as logback, slf4j-log4j12, slf4j-jcl and so on
@@ -153,7 +154,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-jdk14</artifactId>
-            <version>1.7.7</version>
+            <version>1.7.20</version>
             <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
