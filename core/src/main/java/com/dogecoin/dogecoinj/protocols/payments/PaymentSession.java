@@ -292,7 +292,7 @@ public class PaymentSession {
     }
 
     /**
-     * Returns a {@link Wallet.SendRequest} suitable for broadcasting to the network.
+     * Returns a {@link SendRequest} suitable for broadcasting to the network.
      */
     public SendRequest getSendRequest() {
         Transaction tx = new Transaction(params);
