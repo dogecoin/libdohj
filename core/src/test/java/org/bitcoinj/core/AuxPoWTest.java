@@ -1,5 +1,6 @@
 package org.bitcoinj.core;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -80,9 +81,9 @@ public class AuxPoWTest {
         // Emulate Namecoin block hashing for this test
         final NetworkParameters namecoinLikeParams = new DogecoinTestNet3Params() {
             @Override
-            public Sha256Hash getBlockDifficultyHash(Block block) {
+            public BigInteger getBlockDifficulty(Block block) {
                 // Namecoin uses SHA256 hashes
-                return block.getHash();
+                return block.getHash().toBigInteger();
             }
         };
         byte[] auxpowAsBytes = getBytes(getClass().getResourceAsStream("auxpow_header_no_tx_header.bin"));

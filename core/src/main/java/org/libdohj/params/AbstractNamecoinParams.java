@@ -254,8 +254,8 @@ public abstract class AbstractNamecoinParams extends NetworkParameters implement
      */
     
     @Override
-    public Sha256Hash getBlockDifficultyHash(Block block) {
-        return block.getHash();
+    public BigInteger getBlockDifficulty(Block block) {
+        return block.getHash().toBigInteger();
     }
 
     @Override

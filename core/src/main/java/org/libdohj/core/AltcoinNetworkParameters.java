@@ -19,17 +19,19 @@ import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Sha256Hash;
 
+import java.math.BigInteger;
+
 /**
  *
  * @author Ross Nicoll
  */
 public interface AltcoinNetworkParameters {
     /**
-     * Get the hash for the given block, for comparing against target difficulty.
+     * Get the difficulty target the given block, for comparing against target difficulty.
      * This provides an extension hook for networks which use a hash other than
      * SHA256 twice (Bitcoin standard) for proof of work.
      */
-    Sha256Hash getBlockDifficultyHash(Block block);
+    BigInteger getBlockDifficulty(Block block);
 
     public boolean isTestNet();
 

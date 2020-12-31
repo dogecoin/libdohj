@@ -102,8 +102,8 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
      * Get the hash to use for a block.
      */
     @Override
-    public Sha256Hash getBlockDifficultyHash(Block block) {
-        return Sha256Hash.wrap(((AltcoinBlock) block).getScryptHash().getBytes());
+    public BigInteger getBlockDifficulty(Block block) {
+        return ((AltcoinBlock) block).getScryptHash().toBigInteger();
     }
 
     public MonetaryFormat getMonetaryFormat() {
