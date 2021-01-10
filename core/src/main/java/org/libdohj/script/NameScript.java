@@ -16,10 +16,8 @@
 
 package org.libdohj.script;
 
-import org.bitcoinj.core.ScriptException;
-import org.bitcoinj.script.Script;
-import org.bitcoinj.script.ScriptBuilder;
-import org.bitcoinj.script.ScriptChunk;
+import org.bitcoinj.script.*;
+
 import static org.bitcoinj.script.ScriptOpCodes.*;
 
 import java.util.ArrayList;
@@ -129,7 +127,7 @@ public class NameScript {
                 return false;
             
             default:
-                throw new ScriptException("Invalid name op");
+                throw new ScriptException(ScriptError.SCRIPT_ERR_BAD_OPCODE, "Invalid name op");
         }
     }
     
@@ -149,7 +147,7 @@ public class NameScript {
                 return true;
             
             default:
-                throw new ScriptException("Not a name op");
+                throw new ScriptException(ScriptError.SCRIPT_ERR_DISABLED_OPCODE, "Not a name op");
         }
     }
     
@@ -160,7 +158,7 @@ public class NameScript {
                 return args.get(0);
             
             default:
-                throw new ScriptException("Not an AnyUpdate op");
+                throw new ScriptException(ScriptError.SCRIPT_ERR_DISABLED_OPCODE, "Not an AnyUpdate op");
         }
     }
     
@@ -173,7 +171,7 @@ public class NameScript {
                 return args.get(1);
             
             default:
-                throw new ScriptException("Not an AnyUpdate op");
+                throw new ScriptException(ScriptError.SCRIPT_ERR_DISABLED_OPCODE, "Not an AnyUpdate op");
         }
     }
     

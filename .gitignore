@@ -1,5 +1,6 @@
-core/target
-namecoin/target
+target
+build
+.gradle
 .project
 .classpath
 .settings

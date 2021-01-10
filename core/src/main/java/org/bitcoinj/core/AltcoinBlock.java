@@ -18,7 +18,7 @@
 package org.bitcoinj.core;
 
 import org.libdohj.core.AltcoinNetworkParameters;
-import com.google.common.base.Preconditions;
+import org.libdohj.core.AuxPoWNetworkParameters;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -28,20 +28,16 @@ import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.util.BitSet;
 import java.util.List;
-import static org.bitcoinj.core.Coin.FIFTY_COINS;
-
-import org.libdohj.core.ScryptHash;
-import static org.libdohj.core.Utils.scryptDigest;
 
 import static org.bitcoinj.core.Utils.reverseBytes;
-import org.libdohj.core.AuxPoWNetworkParameters;
+import static org.libdohj.core.Utils.scryptDigest;
 
 /**
  * <p>A block is a group of transactions, and is one of the fundamental data structures of the Bitcoin system.
  * It records a set of {@link Transaction}s together with some data that links it into a place in the global block
  * chain, and proves that a difficult calculation was done over its contents. See
  * <a href="http://www.bitcoin.org/bitcoin.pdf">the Bitcoin technical paper</a> for
- * more detail on blocks. <p/>
+ * more detail on blocks. </p>
  *
  * To get a block, you can either build one from the raw bytes you can get from another implementation, or request one
  * specifically using {@link Peer#getBlock(Sha256Hash)}, or grab one from a downloaded {@link BlockChain}.
@@ -61,7 +57,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
      */
     private boolean auxpowChain = false;
 
-    private ScryptHash scryptHash;
+    private Sha256Hash scryptHash;
 
     /** Special case constructor, used for the genesis node, cloneAsHeader and unit tests.
      * @param params NetworkParameters object.
@@ -113,14 +109,12 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         super(params, version, prevBlockHash, merkleRoot, time, difficultyTarget, nonce, transactions);
     }
 
-    private ScryptHash calculateScryptHash() {
+    private Sha256Hash calculateScryptHash() {
         try {
             ByteArrayOutputStream bos = new UnsafeByteArrayOutputStream(HEADER_SIZE);
             writeHeader(bos);
-            return new ScryptHash(reverseBytes(scryptDigest(bos.toByteArray())));
-        } catch (IOException e) {
-            throw new RuntimeException(e); // Cannot happen.
-        } catch (GeneralSecurityException e) {
+            return Sha256Hash.wrap(reverseBytes(scryptDigest(bos.toByteArray())));
+        } catch (IOException | GeneralSecurityException e) {
             throw new RuntimeException(e); // Cannot happen.
         }
     }
@@ -137,7 +131,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
      * Returns the Scrypt hash of the block (which for a valid, solved block should be
      * below the target). Big endian.
      */
-    public ScryptHash getScryptHash() {
+    public Sha256Hash getScryptHash() {
         if (scryptHash == null)
             scryptHash = calculateScryptHash();
         return scryptHash;
@@ -275,11 +269,11 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
             }
 
             final AltcoinNetworkParameters altParams = (AltcoinNetworkParameters)this.params;
-            BigInteger h = altParams.getBlockDifficultyHash(this).toBigInteger();
-            if (h.compareTo(target) > 0) {
+            final BigInteger hashVal = altParams.getBlockDifficulty(this);
+            if (hashVal.compareTo(target) > 0) {
                 // Proof of work check failed!
                 if (throwException)
-                    throw new VerificationException("Hash is higher than target: " + getHashAsString() + " vs "
+                    throw new VerificationException("Hash is higher than target: " + org.libdohj.core.Utils.formatAsHash(hashVal) + " vs "
                             + target.toString(16));
                 else
                     return false;

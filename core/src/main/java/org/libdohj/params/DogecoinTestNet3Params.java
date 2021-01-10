@@ -43,7 +43,6 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         port = 44556;
         addressHeader = 113;
         p2shHeader = 196;
-        acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
         dumpedPrivateKeyHeader = 241;
         genesisBlock.setTime(1391503289L);
         genesisBlock.setDifficultyTarget(0x1e0ffff0L);
@@ -63,8 +62,8 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         };
         // Note this is the same as the BIP32 testnet, as BIP44 makes HD wallets
         // chain agnostic. Dogecoin mainnet has its own headers for legacy reasons.
-        bip32HeaderPub = 0x043587CF;
-        bip32HeaderPriv = 0x04358394;
+        bip32HeaderP2PKHpub = 0x043587CF;
+        bip32HeaderP2PKHpriv = 0x04358394;
     }
 
     private static DogecoinTestNet3Params instance;

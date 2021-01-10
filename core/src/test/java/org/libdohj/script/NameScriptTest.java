@@ -76,7 +76,7 @@ public class NameScriptTest {
     public void nameNewGetOpName() throws IOException {
         final NameScript ns = getNameNewNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
         expectedEx.expectMessage("Not an AnyUpdate op");
         ns.getOpName();
     }
@@ -85,7 +85,7 @@ public class NameScriptTest {
     public void nameNewGetOpValue() throws IOException {
         final NameScript ns = getNameNewNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
         expectedEx.expectMessage("Not an AnyUpdate op");
         ns.getOpValue();
         
@@ -191,7 +191,7 @@ public class NameScriptTest {
     public void currencyIsAnyUpdate() throws IOException {
         final NameScript ns = getCurrencyNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
         expectedEx.expectMessage("Not a name op");
         ns.isAnyUpdate();
     }
@@ -200,7 +200,7 @@ public class NameScriptTest {
     public void currencyGetOpName() throws IOException {
         final NameScript ns = getCurrencyNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
         expectedEx.expectMessage("Not an AnyUpdate op");
         ns.getOpName();
     }
@@ -209,7 +209,7 @@ public class NameScriptTest {
     public void currencyGetOpValue() throws IOException {
         final NameScript ns = getCurrencyNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
         expectedEx.expectMessage("Not an AnyUpdate op");
         ns.getOpValue();
     }
@@ -227,8 +227,8 @@ public class NameScriptTest {
     public void returnGetAddress() throws IOException {
         final NameScript ns = getReturnNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
-        expectedEx.expectMessage("Cannot cast this script to a pay-to-address type");
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
+        expectedEx.expectMessage("Cannot cast this script to an address");
         ns.getAddress().getToAddress(params).toString();
     }
     
@@ -238,7 +238,7 @@ public class NameScriptTest {
     public void returnIsAnyUpdate() throws IOException {
         final NameScript ns = getReturnNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
         expectedEx.expectMessage("Not a name op");
         ns.isAnyUpdate();
     }
@@ -247,7 +247,7 @@ public class NameScriptTest {
     public void returnGetOpName() throws IOException {
         final NameScript ns = getReturnNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
         expectedEx.expectMessage("Not an AnyUpdate op");
         ns.getOpName();
     }
@@ -256,7 +256,7 @@ public class NameScriptTest {
     public void returnGetOpValue() throws IOException {
         final NameScript ns = getReturnNameScript();
         
-        expectedEx.expect(org.bitcoinj.core.ScriptException.class);
+        expectedEx.expect(org.bitcoinj.script.ScriptException.class);
         expectedEx.expectMessage("Not an AnyUpdate op");
         ns.getOpValue();
     }

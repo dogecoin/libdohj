@@ -17,6 +17,9 @@
 package org.libdohj.core;
 
 import com.lambdaworks.crypto.SCrypt;
+import org.bitcoinj.core.Sha256Hash;
+
+import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 
 /**
@@ -29,5 +32,13 @@ public class Utils {
      */
     public static byte[] scryptDigest(byte[] input) throws GeneralSecurityException {
         return SCrypt.scrypt(input, input, 1024, 1, 1, 32);
+    }
+
+    public static String formatAsHash(final BigInteger value) {
+        final StringBuilder builder = new StringBuilder(value.toString(16));
+        while (builder.length() < (Sha256Hash.LENGTH * 2)) {
+            builder.insert(0, "0");
+        }
+        return builder.toString();
     }
 }
