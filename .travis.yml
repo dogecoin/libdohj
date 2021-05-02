@@ -1,13 +1,15 @@
 # configuration for https://travis-ci.org/dogecoin/libdohj
 sudo: false
+dist: bionic
 language: java
-jdk: oraclejdk8
-install:
-# before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y protobuf-compiler
+matrix:
+  include:
+  - jdk: openjdk8
+    env: GRADLE_VERSION=6.7.1
+  - jdk: openjdk11
+    env: GRADLE_VERSION=6.7.1
+install: true
+before_script:
+  - gradle wrapper --gradle-version=$GRADLE_VERSION
 script:
-  - gradle -q clean install
-  - jdk_switcher use openjdk7
-  - cd core
-  - gradle -q clean build
+  - ./gradlew clean build
