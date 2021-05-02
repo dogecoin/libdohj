@@ -1,19 +1,19 @@
-apply plugin: 'java'
+apply plugin: 'java-library'
 apply plugin: 'maven'
 
 version = '0.15-SNAPSHOT'
 archivesBaseName = 'libdohj-core'
 
 dependencies {
+    api 'org.bitcoinj:bitcoinj-core:0.15.10'
     implementation 'org.bouncycastle:bcprov-jdk15to18:1.68'
-    implementation 'org.bitcoinj:bitcoinj-core:0.15.10'
     implementation 'com.google.guava:guava:30.0-android'
     implementation 'com.lambdaworks:scrypt:1.4.0'
     implementation 'com.google.protobuf:protobuf-java:3.13.0'
     implementation 'com.squareup.okhttp3:okhttp:3.12.12'
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'net.jcip:jcip-annotations:1.0'
-    implementation 'org.fusesource.leveldbjni:leveldbjni-all:1.8'
+    compileOnly 'org.fusesource.leveldbjni:leveldbjni-all:1.8'
     testImplementation 'junit:junit:4.13.1'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.5.2'
     testImplementation 'org.slf4j:slf4j-jdk14:1.7.30'
