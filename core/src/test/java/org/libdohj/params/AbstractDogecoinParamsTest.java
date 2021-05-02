@@ -15,16 +15,15 @@
  */
 package org.libdohj.params;
 
-import java.io.IOException;
-import org.bitcoinj.core.AltcoinBlock;
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.Context;
-import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.Util;
-import static org.junit.Assert.assertEquals;
+import org.bitcoinj.core.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.libdohj.core.AltcoinSerializer;
+
+import java.io.IOException;
+
+
+import static org.junit.Assert.assertEquals;
 
 /**
  *

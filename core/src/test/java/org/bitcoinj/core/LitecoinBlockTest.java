@@ -1,26 +1,17 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.bitcoinj.core;
 
-import java.io.IOException;
-
+import org.junit.Before;
+import org.junit.Test;
 import org.libdohj.core.AltcoinSerializer;
 import org.libdohj.params.LitecoinMainNetParams;
 
+import java.io.IOException;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
 
-/**
- *
- * @author jrn
- */
 public class LitecoinBlockTest {
-    private NetworkParameters params = LitecoinMainNetParams.get();
+    private static final NetworkParameters params = LitecoinMainNetParams.get();
 
     @Before
     public void setUp() throws Exception {

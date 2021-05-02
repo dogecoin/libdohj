@@ -1,28 +1,20 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.bitcoinj.core;
 
+import org.junit.Before;
+import org.junit.Test;
 import org.libdohj.core.AltcoinSerializer;
-import java.io.IOException;
-import java.math.BigInteger;
 import org.libdohj.params.DogecoinMainNetParams;
+
+import java.io.IOException;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
 
-/**
- *
- * @author jrn
- */
 public class DogecoinBlockTest {
-    private final NetworkParameters params = DogecoinMainNetParams.get();
+    private static final NetworkParameters params = DogecoinMainNetParams.get();
 
     @Before
     public void setUp() throws Exception {
@@ -59,7 +51,6 @@ public class DogecoinBlockTest {
 
     /**
      * Test the first hardfork block.
-     * @throws IOException 
      */
     @Test
     public void shouldParseBlock250000() throws IOException {
@@ -76,8 +67,6 @@ public class DogecoinBlockTest {
 
     /**
      * Confirm parsing of the first merged-mine block.
-     * 
-     * @throws IOException 
      */
     @Test
     public void shouldParseBlock371337() throws IOException {
@@ -125,8 +114,6 @@ public class DogecoinBlockTest {
     /**
      * Confirm parsing of block with a nonce value above Integer.MAX_VALUE.
      * See https://github.com/rnicoll/libdohj/pull/7
-     * 
-     * @throws IOException 
      */
     @Test
     public void shouldParseBlock748634() throws IOException {
@@ -150,8 +137,6 @@ public class DogecoinBlockTest {
     /**
      * Confirm parsing of block with a nonce value above Integer.MAX_VALUE.
      * See https://github.com/rnicoll/libdohj/issues/5
-     * 
-     * @throws IOException 
      */
     @Test
     public void shouldParseBlock894863() throws IOException {

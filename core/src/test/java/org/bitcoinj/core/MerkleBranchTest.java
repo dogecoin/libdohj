@@ -1,12 +1,10 @@
 package org.bitcoinj.core;
 
 
-import static org.bitcoinj.core.AuxPoWTest.params;
 import org.bitcoinj.params.TestNet3Params;
 import org.junit.Test;
 
 import static org.bitcoinj.core.Util.getBytes;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
