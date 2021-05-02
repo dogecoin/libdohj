@@ -17,9 +17,10 @@ package org.libdohj.params;
 
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Context;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  *

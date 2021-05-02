@@ -15,6 +15,8 @@
  */
 package org.libdohj.names;
 
+import org.junit.Before;
+import org.junit.Test;
 import org.libdohj.params.AbstractNamecoinParams;
 import org.libdohj.params.NamecoinMainNetParams;
 
@@ -24,8 +26,6 @@ import org.bitcoinj.core.Util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.IOException;
 

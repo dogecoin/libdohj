@@ -18,7 +18,7 @@
 package org.libdohj.params;
 
 import org.bitcoinj.core.Utils;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 
 import static com.google.common.base.Preconditions.checkState;
 import java.io.ByteArrayOutputStream;

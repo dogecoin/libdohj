@@ -1,12 +1,16 @@
-apply plugin: 'java'
+apply plugin: 'java-library'
 
 dependencies {
     implementation project(':core')
-    implementation 'com.google.guava:guava:24.0-android'
+    implementation 'org.bitcoinj:bitcoinj-core:0.15.10'
+    implementation 'com.google.guava:guava:30.0-android'
     implementation 'net.sf.jopt-simple:jopt-simple:4.3'
-    implementation 'org.slf4j:slf4j-jdk14:1.7.25'
+    implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'org.fusesource.leveldbjni:leveldbjni-all:1.8'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.5.2'
 }
 
 sourceCompatibility = 1.8
+
+test {
+}

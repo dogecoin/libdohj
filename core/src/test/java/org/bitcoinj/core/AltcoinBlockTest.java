@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 jrn.
+ * Copyright 2015, 2021 Ross Nicoll.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,21 +15,16 @@
  */
 package org.bitcoinj.core;
 
-import java.util.BitSet;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
-
 import org.libdohj.params.DogecoinMainNetParams;
 
-/**
- *
- * @author jrn
- */
+import java.util.BitSet;
+
+import static org.junit.Assert.assertEquals;
+
 public class AltcoinBlockTest {
-    private final NetworkParameters params = DogecoinMainNetParams.get();
+    private static final NetworkParameters params = DogecoinMainNetParams.get();
 
     @Before
     public void setUp() throws Exception {
