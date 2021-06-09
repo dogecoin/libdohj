@@ -37,6 +37,7 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         p2shHeader = 22;
         port = 22556;
         packetMagic = 0xc0c0c0c0;
+        segwitAddressHrp = "doge";
         // Note that while BIP44 makes HD wallets chain-agnostic, for legacy
         // reasons we use a Doge-specific header for main net. At some point
         // we'll add independent headers for BIP32 legacy and BIP44.

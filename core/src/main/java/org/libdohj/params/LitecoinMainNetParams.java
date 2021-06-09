@@ -53,6 +53,7 @@ public class LitecoinMainNetParams extends AbstractLitecoinParams {
         addressHeader = 48;
         p2shHeader = 5;
         dumpedPrivateKeyHeader = 176;
+        segwitAddressHrp = "ltc";
 
         this.genesisBlock = createGenesis(this);
         spendableCoinbaseDepth = 100;
