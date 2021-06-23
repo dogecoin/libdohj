@@ -277,10 +277,10 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
         return Utils.encodeCompactBits(newTarget);
     }
 
-//    @Override
-//    public AltcoinSerializer getSerializer(boolean parseRetain) {
-//        return new AltcoinSerializer(this, parseRetain);
-//    }
+    @Override
+    public AltcoinSerializer getSerializer(boolean parseRetain) {
+        return new AltcoinSerializer(this, parseRetain);
+    }
 
     @Override
     public int getProtocolVersionNum(final ProtocolVersion version) {
