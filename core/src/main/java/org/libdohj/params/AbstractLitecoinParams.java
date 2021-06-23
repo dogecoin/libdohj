@@ -76,7 +76,7 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
     public static final String ID_LITE_REGTEST = "regtest";
 
     public static final int LITECOIN_PROTOCOL_VERSION_MINIMUM = 70002;
-    public static final int LITECOIN_PROTOCOL_VERSION_CURRENT = 70003;
+    public static final int LITECOIN_PROTOCOL_VERSION_CURRENT = 70012;
 
     private static final Coin BASE_SUBSIDY = COIN.multiply(50);
 
