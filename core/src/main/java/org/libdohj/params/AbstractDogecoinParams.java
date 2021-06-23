@@ -417,10 +417,10 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         return ((AltcoinBlock) block).getScryptHash().toBigInteger();
     }
 
-    @Override
-    public AltcoinSerializer getSerializer(boolean parseRetain) {
-        return new AltcoinSerializer(this, parseRetain);
-    }
+//    @Override
+//    public AltcoinSerializer getSerializer(boolean parseRetain) {
+//        return new AltcoinSerializer(this, parseRetain);
+//    }
 
     @Override
     public int getProtocolVersionNum(final ProtocolVersion version) {
