@@ -51,7 +51,7 @@ public class LitecoinTestNet3Params extends AbstractLitecoinParams {
         maxTarget = Utils.decodeCompactBits(0x1e0fffffL);
         port = 19333;
         addressHeader = 111;
-        p2shHeader = 196;
+        p2shHeader = 58;
         dumpedPrivateKeyHeader = 239;
         segwitAddressHrp = "tltc";
 
