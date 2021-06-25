@@ -16,42 +16,37 @@
 
 package org.libdohj.params;
 
-import java.io.ByteArrayOutputStream;
-import java.math.BigInteger;
-
-import org.bitcoinj.core.AltcoinBlock;
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Coin;
-import static org.bitcoinj.core.Coin.COIN;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.VerificationException;
+import org.bitcoinj.core.*;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptOpCodes;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
 import org.bitcoinj.utils.MonetaryFormat;
-
+import org.libdohj.core.AltcoinSerializer;
+import org.libdohj.core.AuxPoWNetworkParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.StoredBlock;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.TransactionInput;
-import org.bitcoinj.core.TransactionOutput;
-import org.bitcoinj.core.Utils;
-import org.libdohj.core.AltcoinSerializer;
-import org.libdohj.core.AuxPoWNetworkParameters;
+import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
+
+import static org.bitcoinj.core.Coin.COIN;
 
 /**
  * Common parameters for Dogecoin networks.
  */
 public abstract class AbstractDogecoinParams extends NetworkParameters implements AuxPoWNetworkParameters {
-    /** Standard format for the DOGE denomination. */
+    /**
+     * Standard format for the DOGE denomination.
+     */
     public static final MonetaryFormat DOGE;
-    /** Standard format for the mDOGE denomination. */
+    /**
+     * Standard format for the mDOGE denomination.
+     */
     public static final MonetaryFormat MDOGE;
-    /** Standard format for the Koinu denomination. */
+    /**
+     * Standard format for the Koinu denomination.
+     */
     public static final MonetaryFormat KOINU;
 
     public static final int DIGISHIELD_BLOCK_HEIGHT = 145000; // Block height to use Digishield from
@@ -62,11 +57,17 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     public static final int DOGE_INTERVAL = DOGE_TARGET_TIMESPAN / DOGE_TARGET_SPACING;
     public static final int DOGE_INTERVAL_NEW = DOGE_TARGET_TIMESPAN_NEW / DOGE_TARGET_SPACING;
 
-    /** Currency code for base 1 Dogecoin. */
+    /**
+     * Currency code for base 1 Dogecoin.
+     */
     public static final String CODE_DOGE = "DOGE";
-    /** Currency code for base 1/1,000 Dogecoin. */
+    /**
+     * Currency code for base 1/1,000 Dogecoin.
+     */
     public static final String CODE_MDOGE = "mDOGE";
-    /** Currency code for base 1/100,000,000 Dogecoin. */
+    /**
+     * Currency code for base 1/100,000,000 Dogecoin.
+     */
     public static final String CODE_KOINU = "Koinu";
 
     private static final int BLOCK_MIN_VERSION_AUXPOW = 0x00620002;
@@ -74,16 +75,20 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     static {
         DOGE = MonetaryFormat.BTC.noCode()
-            .code(0, CODE_DOGE)
-            .code(3, CODE_MDOGE)
-            .code(7, CODE_KOINU);
+                .code(0, CODE_DOGE)
+                .code(3, CODE_MDOGE)
+                .code(7, CODE_KOINU);
         MDOGE = DOGE.shift(3).minDecimals(2).optionalDecimals(2);
         KOINU = DOGE.shift(7).minDecimals(0).optionalDecimals(2);
     }
 
-    /** The string returned by getId() for the main, production network where people trade things. */
+    /**
+     * The string returned by getId() for the main, production network where people trade things.
+     */
     public static final String ID_DOGE_MAINNET = "org.dogecoin.production";
-    /** The string returned by getId() for the testnet. */
+    /**
+     * The string returned by getId() for the testnet.
+     */
     public static final String ID_DOGE_TESTNET = "org.dogecoin.test";
 
     protected final int newInterval;
@@ -94,7 +99,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     public static final int DOGECOIN_PROTOCOL_VERSION_AUXPOW = 70003;
     public static final int DOGECOIN_PROTOCOL_VERSION_CURRENT = 70004;
 
-    private static final Coin BASE_SUBSIDY   = COIN.multiply(500000);
+    private static final Coin BASE_SUBSIDY = COIN.multiply(500000);
     private static final Coin STABLE_SUBSIDY = COIN.multiply(10000);
 
     public AbstractDogecoinParams(final int setDiffChangeTarget) {
@@ -147,7 +152,9 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         }
     }
 
-    /** How many blocks pass between difficulty adjustment periods. After new diff algo. */
+    /**
+     * How many blocks pass between difficulty adjustment periods. After new diff algo.
+     */
     public int getNewInterval() {
         return newInterval;
     }
@@ -186,7 +193,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         return false;
     }
 
-    /** Dogecoin: Normally minimum difficulty blocks can only occur in between
+    /**
+     * Dogecoin: Normally minimum difficulty blocks can only occur in between
      * retarget blocks. However, once we introduce Digishield every block is
      * a retarget, so we need to handle minimum difficulty on all blocks.
      */
@@ -205,7 +213,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     @Override
     public void checkDifficultyTransitions(StoredBlock storedPrev, Block nextBlock, BlockStore blockStore)
-        throws VerificationException, BlockStoreException {
+            throws VerificationException, BlockStoreException {
         try {
             final long newTargetCompact = calculateNewDifficultyTarget(storedPrev, nextBlock, blockStore);
             final long receivedTargetCompact = nextBlock.getDifficultyTarget();
@@ -224,14 +232,13 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
      * difficulty if the block interval is high enough.
      *
      * @throws CheckpointEncounteredException if a checkpoint is encountered while
-     * calculating difficulty target, and therefore no conclusive answer can
-     * be provided.
+     *                                        calculating difficulty target, and therefore no conclusive answer can
+     *                                        be provided.
      */
     public long calculateNewDifficultyTarget(StoredBlock storedPrev, Block nextBlock, BlockStore blockStore)
-        throws VerificationException, BlockStoreException, CheckpointEncounteredException {
+            throws VerificationException, BlockStoreException, CheckpointEncounteredException {
         // Dogecoin: Special rules for minimum difficulty blocks with Digishield
-        if (allowDigishieldMinDifficultyForBlock(storedPrev, nextBlock))
-        {
+        if (allowDigishieldMinDifficultyForBlock(storedPrev, nextBlock)) {
             // Special difficulty rule for testnet:
             // If the new block's timestamp is more than 2* nTargetSpacing minutes
             // then allow mining of a min-difficulty block.
@@ -242,8 +249,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         final int previousHeight = storedPrev.getHeight();
         final boolean digishieldAlgorithm = previousHeight + 1 >= this.getDigishieldBlockHeight();
         final int retargetInterval = digishieldAlgorithm
-            ? this.getNewInterval()
-            : this.getInterval();
+                ? this.getNewInterval()
+                : this.getInterval();
 
         // Is this supposed to be a difficulty transition point?
         if ((storedPrev.getHeight() + 1) % retargetInterval != 0) {
@@ -278,7 +285,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         // two weeks after the initial block chain download.
         StoredBlock cursor = storedPrev;
         int goBack = retargetInterval - 1;
-        if (cursor.getHeight()+1 != retargetInterval)
+        if (cursor.getHeight() + 1 != retargetInterval)
             goBack = retargetInterval;
 
         for (int i = 0; i < goBack; i++) {
@@ -298,8 +305,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
         Block blockIntervalAgo = cursor.getHeader();
         return this.calculateNewDifficultyTargetInner(previousHeight, prev.getTimeSeconds(),
-            prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
-            nextBlock.getDifficultyTarget());
+                prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
+                nextBlock.getDifficultyTarget());
     }
 
     /**
@@ -307,67 +314,60 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
      * recalculation interval. Does not handle special cases such as testnet blocks
      * being setting the target to maximum for blocks after a long interval.
      *
-     * @param previousHeight height of the block immediately before the retarget.
-     * @param prev the block immediately before the retarget block.
-     * @param nextBlock the block the retarget happens at.
+     * @param previousHeight   height of the block immediately before the retarget.
+     * @param prev             the block immediately before the retarget block.
+     * @param nextBlock        the block the retarget happens at.
      * @param blockIntervalAgo The last retarget block.
      * @return New difficulty target as compact bytes.
      */
     protected long calculateNewDifficultyTargetInner(int previousHeight, final Block prev,
-            final Block nextBlock, final Block blockIntervalAgo) {
+                                                     final Block nextBlock, final Block blockIntervalAgo) {
         return this.calculateNewDifficultyTargetInner(previousHeight, prev.getTimeSeconds(),
-            prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
-            nextBlock.getDifficultyTarget());
+                prev.getDifficultyTarget(), blockIntervalAgo.getTimeSeconds(),
+                nextBlock.getDifficultyTarget());
     }
 
     /**
      * Calculate the difficulty target expected for the next block after a normal
      * recalculation interval.
-     * 
-     * @param previousHeight Height of the block immediately previous to the one we're calculating difficulty of.
-     * @param previousBlockTime Time of the block immediately previous to the one we're calculating difficulty of.
+     *
+     * @param previousHeight       Height of the block immediately previous to the one we're calculating difficulty of.
+     * @param previousBlockTime    Time of the block immediately previous to the one we're calculating difficulty of.
      * @param lastDifficultyTarget Compact difficulty target of the last retarget block.
-     * @param lastRetargetTime Time of the last difficulty retarget.
+     * @param lastRetargetTime     Time of the last difficulty retarget.
      * @param nextDifficultyTarget The expected difficulty target of the next
-     * block, used for determining precision of the result.
+     *                             block, used for determining precision of the result.
      * @return New difficulty target as compact bytes.
      */
     protected long calculateNewDifficultyTargetInner(int previousHeight, long previousBlockTime,
-        final long lastDifficultyTarget, final long lastRetargetTime,
-        final long nextDifficultyTarget) {
+                                                     final long lastDifficultyTarget, final long lastRetargetTime,
+                                                     final long nextDifficultyTarget) {
         final int height = previousHeight + 1;
         final boolean digishieldAlgorithm = height >= this.getDigishieldBlockHeight();
         final int retargetTimespan = digishieldAlgorithm
-            ? this.getNewTargetTimespan()
-            : this.getTargetTimespan();
+                ? this.getNewTargetTimespan()
+                : this.getTargetTimespan();
         int actualTime = (int) (previousBlockTime - lastRetargetTime);
         final int minTimespan;
         final int maxTimespan;
 
         // Limit the adjustment step.
-        if (digishieldAlgorithm)
-        {
+        if (digishieldAlgorithm) {
             // Round towards zero to match the C++ implementation.
             if (actualTime < retargetTimespan) {
-                actualTime = (int)Math.ceil(retargetTimespan + (actualTime - retargetTimespan) / 8.0);
+                actualTime = (int) Math.ceil(retargetTimespan + (actualTime - retargetTimespan) / 8.0);
             } else {
-                actualTime = (int)Math.floor(retargetTimespan + (actualTime - retargetTimespan) / 8.0);
+                actualTime = (int) Math.floor(retargetTimespan + (actualTime - retargetTimespan) / 8.0);
             }
             minTimespan = retargetTimespan - (retargetTimespan / 4);
             maxTimespan = retargetTimespan + (retargetTimespan / 2);
-        }
-        else if (height > 10000)
-        {
+        } else if (height > 10000) {
             minTimespan = retargetTimespan / 4;
             maxTimespan = retargetTimespan * 4;
-        }
-        else if (height > 5000)
-        {
+        } else if (height > 5000) {
             minTimespan = retargetTimespan / 8;
             maxTimespan = retargetTimespan * 4;
-        }
-        else
-        {
+        } else {
             minTimespan = retargetTimespan / 16;
             maxTimespan = retargetTimespan * 4;
         }
@@ -398,6 +398,11 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         return DIGISHIELD_BLOCK_HEIGHT;
     }
 
+    /**
+     * Get chain id.
+     *
+     * @return chain identifier
+     */
     @Override
     public int getChainID() {
         return AUXPOW_CHAIN_ID;
@@ -417,11 +422,23 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         return ((AltcoinBlock) block).getScryptHash().toBigInteger();
     }
 
+    /**
+     * Get an {@link AltcoinSerializer}.
+     *
+     * @param parseRetain    retain the backing byte array of a message for fast reserialization.
+     * @return               altcoin serializer
+     */
     @Override
     public AltcoinSerializer getSerializer(boolean parseRetain) {
         return new AltcoinSerializer(this, parseRetain);
     }
 
+    /**
+     * Get a protocol version number from a provided protocol version
+     *
+     * @param version       protocol version
+     * @return              protocol version number
+     */
     @Override
     public int getProtocolVersionNum(final ProtocolVersion version) {
         switch (version) {
@@ -438,8 +455,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     @Override
     public boolean isAuxPoWBlockVersion(long version) {
-        return version >= BLOCK_MIN_VERSION_AUXPOW
-            && (version & BLOCK_VERSION_FLAG_AUXPOW) > 0;
+        return version >= BLOCK_MIN_VERSION_AUXPOW && (version & BLOCK_VERSION_FLAG_AUXPOW) > 0;
     }
 
     /**
@@ -451,17 +467,12 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
      */
     protected int getTargetSpacing(int height) {
         final boolean digishieldAlgorithm = height >= this.getDigishieldBlockHeight();
-        final int retargetInterval = digishieldAlgorithm
-            ? this.getNewInterval()
-            : this.getInterval();
-        final int retargetTimespan = digishieldAlgorithm
-            ? this.getNewTargetTimespan()
-            : this.getTargetTimespan();
+        final int retargetInterval = digishieldAlgorithm ? this.getNewInterval() : this.getInterval();
+        final int retargetTimespan = digishieldAlgorithm ? this.getNewTargetTimespan() : this.getTargetTimespan();
         return retargetTimespan / retargetInterval;
     }
 
     private static class CheckpointEncounteredException extends Exception {
-
         private CheckpointEncounteredException() {
         }
     }
