@@ -51,8 +51,9 @@ public class LitecoinMainNetParams extends AbstractLitecoinParams {
         maxTarget = Utils.decodeCompactBits(0x1e0fffffL);
         port = 9333;
         addressHeader = 48;
-        p2shHeader = 5;
+        p2shHeader = 50;
         dumpedPrivateKeyHeader = 176;
+        segwitAddressHrp = "ltc";
 
         this.genesisBlock = createGenesis(this);
         spendableCoinbaseDepth = 100;

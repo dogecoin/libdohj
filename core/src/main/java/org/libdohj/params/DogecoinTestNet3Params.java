@@ -44,6 +44,7 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         addressHeader = 113;
         p2shHeader = 196;
         dumpedPrivateKeyHeader = 241;
+        segwitAddressHrp = "tdge";
         genesisBlock.setTime(1391503289L);
         genesisBlock.setDifficultyTarget(0x1e0ffff0L);
         genesisBlock.setNonce(997879);
