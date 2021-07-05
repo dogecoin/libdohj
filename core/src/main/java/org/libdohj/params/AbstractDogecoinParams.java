@@ -399,7 +399,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     }
 
     /**
-     * Get chain id.
+     * Get chain identifier used to differentiate this chain from others, when constructing AuxPoW block headers.
      *
      * @return chain identifier
      */
