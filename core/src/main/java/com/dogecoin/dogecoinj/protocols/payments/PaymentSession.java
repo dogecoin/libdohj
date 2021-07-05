@@ -15,7 +15,12 @@
 package com.dogecoin.dogecoinj.protocols.payments;
 
 import com.dogecoin.dogecoinj.protocols.payments.PaymentProtocol.PkiVerificationData;
-import org.bitcoinj.core.*;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.crypto.TrustStoreLoader;
 import org.bitcoinj.params.MainNetParams;
@@ -30,8 +35,13 @@ import org.bitcoin.protocols.payments.Protos;
 
 import javax.annotation.Nullable;
 
-import java.io.*;
-import java.net.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -362,17 +372,25 @@ public class PaymentSession {
      */
     public @Nullable
     Protos.Payment getPayment(List<Transaction> txns, @Nullable Address refundAddr, @Nullable String memo)
-            throws IOException, PaymentProtocolException.InvalidNetwork {
+            throws PaymentProtocolException.InvalidNetwork {
         if (paymentDetails.hasPaymentUrl()) {
-            for (Transaction tx : txns)
-                if (!tx.getParams().equals(params))
+            for (Transaction tx : txns) {
+                if (!tx.getParams().equals(params)) {
                     throw new PaymentProtocolException.InvalidNetwork(params.getPaymentProtocolId());
+                }
+            }
             return PaymentProtocol.createPaymentMessage(txns, totalValue, refundAddr, memo, getMerchantData());
         } else {
             return null;
         }
     }
 
+    /**
+     * Sends the payment to the merchant who generated the payment.
+     * @param url payment url
+     * @param payment payment
+     * @return payment response
+     */
     @VisibleForTesting
     protected ListenableFuture<PaymentProtocol.Ack> sendPayment(final URL url, final Protos.Payment payment) {
         return executor.submit(new Callable<PaymentProtocol.Ack>() {
