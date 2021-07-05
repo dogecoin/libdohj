@@ -423,7 +423,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     }
 
     /**
-     * Get an {@link AltcoinSerializer}.
+     * Get an {@link AltcoinSerializer} suitable for use with this blockchain (as in, understands any extended types it uses).
      *
      * @param parseRetain    retain the backing byte array of a message for fast reserialization.
      * @return               altcoin serializer
