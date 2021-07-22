@@ -91,7 +91,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     protected final int diffChangeTarget;
 
     protected Logger log = LoggerFactory.getLogger(AbstractDogecoinParams.class);
-    public static final int DOGECOIN_PROTOCOL_VERSION_AUXPOW = 70003;
+    public static final int DOGECOIN_PROTOCOL_VERSION_AUXPOW = 70015;
     public static final int DOGECOIN_PROTOCOL_VERSION_CURRENT = 70015;
 
     private static final Coin BASE_SUBSIDY   = COIN.multiply(500000);
