@@ -52,9 +52,9 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
 
         // Note this is an SHA256 hash, not a Scrypt hash. Scrypt hashes are only
         // used in difficulty calculations.
-        String genesisHash = genesisBlock.getHashAsString();
-        checkState(genesisHash.equals(""),
-                genesisHash);
+        //String genesisHash = genesisBlock.getHashAsString();
+       // checkState(genesisHash.equals(""),
+         //       genesisHash);
 
         majorityEnforceBlockUpgrade = MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED;
@@ -66,7 +66,6 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         // Having these here simplifies block connection logic considerably.
         checkpoints.put(   60000, Sha256Hash.wrap("cf23fe03d921012cfdfc2847bd6ef4a647bbb559d6eb57d6432d7bcb930d720f"));
        
-
         dnsSeeds = new String[] {
                 "radioblockchain.info",
                
