@@ -2,7 +2,7 @@ apply plugin: 'java-library'
 apply plugin: 'maven'
 
 //version = '0.15-SNAPSHOT'
-version = '22914ff'
+version = '34d7f0b'
 
 archivesBaseName = 'libdohj-core'
 
