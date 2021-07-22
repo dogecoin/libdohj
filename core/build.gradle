@@ -1,11 +1,15 @@
 apply plugin: 'java-library'
 apply plugin: 'maven'
 
-version = '0.15-SNAPSHOT'
+//version = '0.15-SNAPSHOT'
+version = '22914ff'
+
 archivesBaseName = 'libdohj-core'
 
 dependencies {
-    api 'org.bitcoinj:bitcoinj-core:0.15.10'
+    
+      api 'com.github.c4pt000:bitcoinj:f11f04c'
+//    api 'org.bitcoinj:bitcoinj-core:0.15.10'
     implementation 'com.madgag.spongycastle:core:1.58.0.0'
     implementation 'com.google.guava:guava:30.0-android'
     implementation 'com.lambdaworks:scrypt:1.4.0'
