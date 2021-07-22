@@ -54,20 +54,20 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     /** Standard format for the Koinu denomination. */
     public static final MonetaryFormat KOINU;
 
-    public static final int DIGISHIELD_BLOCK_HEIGHT = 145000; // Block height to use Digishield from
+    public static final int DIGISHIELD_BLOCK_HEIGHT = 100; // Block height to use Digishield from
     public static final int AUXPOW_CHAIN_ID = 0x0062; // 98
-    public static final int DOGE_TARGET_TIMESPAN = 4 * 60 * 60;  // 4 hours per difficulty cycle, on average.
+    public static final int DOGE_TARGET_TIMESPAN =  60 * 60;  // 4 hours per difficulty cycle, on average.
     public static final int DOGE_TARGET_TIMESPAN_NEW = 60;  // 60s per difficulty cycle, on average. Kicks in after block 145k.
     public static final int DOGE_TARGET_SPACING = 1 * 60;  // 1 minute per block.
     public static final int DOGE_INTERVAL = DOGE_TARGET_TIMESPAN / DOGE_TARGET_SPACING;
     public static final int DOGE_INTERVAL_NEW = DOGE_TARGET_TIMESPAN_NEW / DOGE_TARGET_SPACING;
 
     /** Currency code for base 1 Dogecoin. */
-    public static final String CODE_DOGE = "DOGE";
+    public static final String CODE_DOGE = "RADC";
     /** Currency code for base 1/1,000 Dogecoin. */
-    public static final String CODE_MDOGE = "mDOGE";
+    public static final String CODE_MDOGE = "mRADC";
     /** Currency code for base 1/100,000,000 Dogecoin. */
-    public static final String CODE_KOINU = "Koinu";
+    public static final String CODE_KOINU = "radiowaves";
 
     private static final int BLOCK_MIN_VERSION_AUXPOW = 0x00620002;
     private static final int BLOCK_VERSION_FLAG_AUXPOW = 0x00000100;
@@ -92,7 +92,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     protected Logger log = LoggerFactory.getLogger(AbstractDogecoinParams.class);
     public static final int DOGECOIN_PROTOCOL_VERSION_AUXPOW = 70003;
-    public static final int DOGECOIN_PROTOCOL_VERSION_CURRENT = 70004;
+    public static final int DOGECOIN_PROTOCOL_VERSION_CURRENT = 70015;
 
     private static final Coin BASE_SUBSIDY   = COIN.multiply(500000);
     private static final Coin STABLE_SUBSIDY = COIN.multiply(10000);
@@ -107,21 +107,21 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         maxTarget = Utils.decodeCompactBits(0x1e0fffffL);
         diffChangeTarget = setDiffChangeTarget;
 
-        packetMagic = 0xc0c0c0c0;
-        bip32HeaderP2PKHpub = 0x0488C42E; //The 4 byte header that serializes in base58 to "xpub". (?)
-        bip32HeaderP2PKHpriv = 0x0488E1F4; //The 4 byte header that serializes in base58 to "xprv" (?)
+        packetMagic = 0xd1d1d1d1;
+        bip32HeaderP2PKHpub = 0x02facafd; //The 4 byte header that serializes in base58 to "xpub". (?)
+        bip32HeaderP2PKHpriv = 0x02fac398; //The 4 byte header that serializes in base58 to "xprv" (?)
     }
 
     private static AltcoinBlock createGenesis(NetworkParameters params) {
         AltcoinBlock genesisBlock = new AltcoinBlock(params, Block.BLOCK_VERSION_GENESIS);
         Transaction t = new Transaction(params);
         try {
-            byte[] bytes = Utils.HEX.decode
-                    ("04ffff001d0104084e696e746f6e646f");
+            byte[] bytes = Utils.HEX.decode  //526164696f436f696e2077616c6c6574
+                    ("04ffff001d010408526164696f436f696e2077616c6c6574");
             t.addInput(new TransactionInput(params, t, bytes));
             ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
             Script.writeBytes(scriptPubKeyBytes, Utils.HEX.decode
-                    ("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9"));
+                    ("046b8e36534122449a1d0c0c2b380647b23b562fb0be95b698596a2507eb6aa5c5dba4294bc39f31b3b2351994673ce150449ad83bce4b7624b7c488f6ca23aa71"));
             scriptPubKeyBytes.write(ScriptOpCodes.OP_CHECKSIG);
             t.addOutput(new TransactionOutput(params, t, COIN.multiply(88), scriptPubKeyBytes.toByteArray()));
         } catch (Exception e) {
@@ -178,7 +178,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     @Override
     public String getUriScheme() {
-        return "dogecoin";
+        return "radiocoin";
     }
 
     @Override
