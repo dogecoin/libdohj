@@ -67,13 +67,15 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         checkpoints.put(   60000, Sha256Hash.wrap("cf23fe03d921012cfdfc2847bd6ef4a647bbb559d6eb57d6432d7bcb930d720f"));
        
         dnsSeeds = new String[] {
-                           "radioblockchain.info",
-                "seed-ns1.radioblockchain.info",
+             "radioblockchain.info",
+             "seed-ns1.radioblockchain.info",
              "seed-ns2.radioblockchain.info",
              "seed-ns3.radioblockchain.info",
-              "104.237.145.126",
-              "172.104.241.226",
-               
+             "104.237.145.126",
+             "172.104.241.226",
+             "172.104.64.180",
+             "radiopool.me",
+             
         };
     }
 
