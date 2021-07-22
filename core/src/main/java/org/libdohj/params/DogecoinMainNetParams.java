@@ -25,10 +25,10 @@ import static com.google.common.base.Preconditions.checkState;
  * goods and services.
  */
 public class DogecoinMainNetParams extends AbstractDogecoinParams {
-    public static final int MAINNET_MAJORITY_WINDOW = 2000;
-    public static final int MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED = 1900;
-    public static final int MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 1500;
-    protected static final int DIFFICULTY_CHANGE_TARGET = 145000;
+      public static final int MAINNET_MAJORITY_WINDOW = 1000;
+    public static final int MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED = 950;
+    public static final int MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 750;
+    protected static final int DIFFICULTY_CHANGE_TARGET = 100;
 
     public DogecoinMainNetParams() {
         super(DIFFICULTY_CHANGE_TARGET);
@@ -67,7 +67,9 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         checkpoints.put(   60000, Sha256Hash.wrap("cf23fe03d921012cfdfc2847bd6ef4a647bbb559d6eb57d6432d7bcb930d720f"));
        
         dnsSeeds = new String[] {
-                "radioblockchain.info",
+                "seed-ns1.radioblockchain.info",
+             "seed-ns2.radioblockchain.info",
+             "seed-ns3.radioblockchain.info",
                
         };
     }
