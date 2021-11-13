@@ -17,10 +17,15 @@
 
 package org.libdohj.params;
 
-import org.bitcoinj.core.Utils;
+import org.bitcoinj.core.*;
+import org.bitcoinj.script.Script;
+import org.bitcoinj.script.ScriptOpCodes;
 import org.spongycastle.util.encoders.Hex;
 
+import java.io.ByteArrayOutputStream;
+
 import static com.google.common.base.Preconditions.checkState;
+import static org.bitcoinj.core.Coin.COIN;
 
 /**
  * Parameters for the Dogecoin testnet, a separate public network that has
@@ -32,6 +37,10 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
     public static final int TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED = 750;
     public static final int TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 501;
     protected static final int DIFFICULTY_CHANGE_TARGET = 145000;
+    private static final Sha256Hash GENESIS_HASH = Sha256Hash.wrap("bb0a78264637406b6360aad926284d544d7049f45189db5664f3c4d07350559e");
+    private static final long GENESIS_TIME = 1391503289L;
+    private static final long GENESIS_NONCE = 997879;
+    private static final long STANDARD_MAX_DIFFICULTY_TARGET = 0x1e0ffff0L;
 
     public DogecoinTestNet3Params() {
         super(DIFFICULTY_CHANGE_TARGET);
@@ -45,14 +54,8 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         p2shHeader = 196;
         dumpedPrivateKeyHeader = 241;
         segwitAddressHrp = "tdge";
-        genesisBlock.setTime(1391503289L);
-        genesisBlock.setDifficultyTarget(0x1e0ffff0L);
-        genesisBlock.setNonce(997879);
         spendableCoinbaseDepth = 30;
         subsidyDecreaseBlockCount = 100000;
-        String genesisHash = genesisBlock.getHashAsString();
-        checkState(genesisHash.equals("bb0a78264637406b6360aad926284d544d7049f45189db5664f3c4d07350559e"));
-        alertSigningKey = Hex.decode("042756726da3c7ef515d89212ee1705023d14be389e25fe15611585661b9a20021908b2b80a3c7200a0139dd2b26946606aab0eef9aa7689a6dc2c7eee237fa834");
 
         majorityEnforceBlockUpgrade = TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED;
@@ -65,6 +68,40 @@ public class DogecoinTestNet3Params extends AbstractDogecoinParams {
         // chain agnostic. Dogecoin mainnet has its own headers for legacy reasons.
         bip32HeaderP2PKHpub = 0x043587CF;
         bip32HeaderP2PKHpriv = 0x04358394;
+    }
+
+    private static AltcoinBlock createGenesis(NetworkParameters params) {
+        AltcoinBlock genesisBlock = new AltcoinBlock(params, Block.BLOCK_VERSION_GENESIS);
+        Transaction t = new Transaction(params);
+        try {
+            byte[] bytes = Utils.HEX.decode
+                    ("04ffff001d0104084e696e746f6e646f");
+            t.addInput(new TransactionInput(params, t, bytes));
+            ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
+            Script.writeBytes(scriptPubKeyBytes, Utils.HEX.decode
+                    ("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9"));
+            scriptPubKeyBytes.write(ScriptOpCodes.OP_CHECKSIG);
+            t.addOutput(new TransactionOutput(params, t, COIN.multiply(88), scriptPubKeyBytes.toByteArray()));
+        } catch (Exception e) {
+            // Cannot happen.
+            throw new RuntimeException(e);
+        }
+        genesisBlock.addTransaction(t);
+        return genesisBlock;
+    }
+
+    @Override
+    public Block getGenesisBlock() {
+        synchronized (GENESIS_HASH) {
+            if (genesisBlock == null) {
+                genesisBlock = createGenesis(this);
+                genesisBlock.setDifficultyTarget(STANDARD_MAX_DIFFICULTY_TARGET);
+                genesisBlock.setTime(GENESIS_TIME);
+                genesisBlock.setNonce(GENESIS_NONCE);
+                checkState(genesisBlock.getHash().equals(GENESIS_HASH), "Invalid genesis hash");
+            }
+        }
+        return genesisBlock;
     }
 
     private static DogecoinTestNet3Params instance;

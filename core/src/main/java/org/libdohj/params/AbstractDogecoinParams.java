@@ -72,6 +72,8 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     private static final int BLOCK_MIN_VERSION_AUXPOW = 0x00620002;
     private static final int BLOCK_VERSION_FLAG_AUXPOW = 0x00000100;
 
+    protected Block genesisBlock;
+
     static {
         DOGE = MonetaryFormat.BTC.noCode()
             .code(0, CODE_DOGE)
@@ -100,7 +102,6 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
 
     public AbstractDogecoinParams(final int setDiffChangeTarget) {
         super();
-        genesisBlock = createGenesis(this);
         interval = DOGE_INTERVAL;
         newInterval = DOGE_INTERVAL_NEW;
         targetTimespan = DOGE_TARGET_TIMESPAN;
@@ -111,26 +112,6 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
         packetMagic = 0xc0c0c0c0;
         bip32HeaderP2PKHpub = 0x0488C42E; //The 4 byte header that serializes in base58 to "xpub". (?)
         bip32HeaderP2PKHpriv = 0x0488E1F4; //The 4 byte header that serializes in base58 to "xprv" (?)
-    }
-
-    private static AltcoinBlock createGenesis(NetworkParameters params) {
-        AltcoinBlock genesisBlock = new AltcoinBlock(params, Block.BLOCK_VERSION_GENESIS);
-        Transaction t = new Transaction(params);
-        try {
-            byte[] bytes = Utils.HEX.decode
-                    ("04ffff001d0104084e696e746f6e646f");
-            t.addInput(new TransactionInput(params, t, bytes));
-            ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
-            Script.writeBytes(scriptPubKeyBytes, Utils.HEX.decode
-                    ("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9"));
-            scriptPubKeyBytes.write(ScriptOpCodes.OP_CHECKSIG);
-            t.addOutput(new TransactionOutput(params, t, COIN.multiply(88), scriptPubKeyBytes.toByteArray()));
-        } catch (Exception e) {
-            // Cannot happen.
-            throw new RuntimeException(e);
-        }
-        genesisBlock.addTransaction(t);
-        return genesisBlock;
     }
 
     @Override

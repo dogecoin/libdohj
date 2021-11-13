@@ -16,10 +16,15 @@
 
 package org.libdohj.params;
 
-import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.*;
+import org.bitcoinj.script.Script;
+import org.bitcoinj.script.ScriptOpCodes;
 import org.spongycastle.util.encoders.Hex;
 
+import java.io.ByteArrayOutputStream;
+
 import static com.google.common.base.Preconditions.checkState;
+import static org.bitcoinj.core.Coin.COIN;
 
 // TODO: review this
 
@@ -31,6 +36,10 @@ public class NamecoinMainNetParams extends AbstractNamecoinParams {
     public static final int MAINNET_MAJORITY_WINDOW = 1000;
     public static final int MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED = 950;
     public static final int MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 750;
+    private static final Sha256Hash GENESIS_HASH = Sha256Hash.wrap("000000000062b72c5e2ceb45fbc8587e807c155b0da735e6483dfba2f0a9c770");
+    private static final long GENESIS_TIME = 1303000001L;
+    private static final long GENESIS_NONCE = 2719916434L;
+    private static final long STANDARD_MAX_DIFFICULTY_TARGET = 0x1C007FFFL;
 
     public NamecoinMainNetParams() {
         super();
@@ -39,21 +48,12 @@ public class NamecoinMainNetParams extends AbstractNamecoinParams {
         p2shHeader = 13;
         port = 8334;
         packetMagic = 0xf9beb4fe;
-        
-        genesisBlock.setDifficultyTarget(0x1C007FFFL);
-        genesisBlock.setTime(1303000001L);
-        genesisBlock.setNonce(2719916434L);
+
         id = ID_NMC_MAINNET;
         subsidyDecreaseBlockCount = 210000;
         spendableCoinbaseDepth = 100;
         auxpowStartHeight = 19200;
-
-        String genesisHash = genesisBlock.getHashAsString();
-        checkState(genesisHash.equals("000000000062b72c5e2ceb45fbc8587e807c155b0da735e6483dfba2f0a9c770"),
-                genesisHash);
-                // TODO: remove alert key since it's removed from Bitcoin Core / Namecoin Core
-        alertSigningKey = Hex.decode("04ba207043c1575208f08ea6ac27ed2aedd4f84e70b874db129acb08e6109a3bbb7c479ae22565973ebf0ac0391514511a22cb9345bdb772be20cfbd38be578b0c");
-
+        
         majorityEnforceBlockUpgrade = MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED;
         majorityWindow = MAINNET_MAJORITY_WINDOW;
@@ -87,6 +87,41 @@ public class NamecoinMainNetParams extends AbstractNamecoinParams {
         };
         
         // TODO: look into HTTP seeds or Addr seeds as is done for Bitcoin
+    }
+
+    private static AltcoinBlock createGenesis(NetworkParameters params) {
+        AltcoinBlock genesisBlock = new AltcoinBlock(params, Block.BLOCK_VERSION_GENESIS);
+        Transaction t = new Transaction(params);
+        try {
+            // "... choose what comes next.  Lives of your own, or a return to chains. -- V"
+            byte[] bytes = Utils.HEX.decode
+                    ("04ff7f001c020a024b2e2e2e2063686f6f7365207768617420636f6d6573206e6578742e20204c69766573206f6620796f7572206f776e2c206f7220612072657475726e20746f20636861696e732e202d2d2056");
+            t.addInput(new TransactionInput(params, t, bytes));
+            ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
+            Script.writeBytes(scriptPubKeyBytes, Utils.HEX.decode
+                    ("04b620369050cd899ffbbc4e8ee51e8c4534a855bb463439d63d235d4779685d8b6f4870a238cf365ac94fa13ef9a2a22cd99d0d5ee86dcabcafce36c7acf43ce5"));
+            scriptPubKeyBytes.write(ScriptOpCodes.OP_CHECKSIG);
+            t.addOutput(new TransactionOutput(params, t, COIN.multiply(50), scriptPubKeyBytes.toByteArray()));
+        } catch (Exception e) {
+            // Cannot happen.
+            throw new RuntimeException(e);
+        }
+        genesisBlock.addTransaction(t);
+        return genesisBlock;
+    }
+
+    @Override
+    public Block getGenesisBlock() {
+        synchronized (GENESIS_HASH) {
+            if (genesisBlock == null) {
+                genesisBlock = createGenesis(this);
+                genesisBlock.setDifficultyTarget(STANDARD_MAX_DIFFICULTY_TARGET);
+                genesisBlock.setTime(GENESIS_TIME);
+                genesisBlock.setNonce(GENESIS_NONCE);
+                checkState(genesisBlock.getHash().equals(GENESIS_HASH), "Invalid genesis hash");
+            }
+        }
+        return genesisBlock;
     }
 
     private static NamecoinMainNetParams instance;

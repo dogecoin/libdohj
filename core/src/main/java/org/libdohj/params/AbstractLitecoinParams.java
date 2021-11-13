@@ -31,6 +31,7 @@ import static org.bitcoinj.core.Coin.COIN;
  * Common parameters for Litecoin networks.
  */
 public abstract class AbstractLitecoinParams extends NetworkParameters implements AltcoinNetworkParameters {
+    protected Block genesisBlock;
     /** Standard format for the LITE denomination. */
     public static final MonetaryFormat LITE;
     /** Standard format for the mLITE denomination. */

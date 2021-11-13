@@ -89,10 +89,10 @@ public abstract class AbstractNamecoinParams extends NetworkParameters implement
     protected Logger log = LoggerFactory.getLogger(AbstractNamecoinParams.class);
     
     public static final int NAMECOIN_PROTOCOL_VERSION_GETHEADERS = 38000;
+    protected Block genesisBlock;
 
     public AbstractNamecoinParams() {
         super();
-        genesisBlock = createGenesis(this);
         interval = INTERVAL;
         targetTimespan = TARGET_TIMESPAN;
         maxTarget = Utils.decodeCompactBits(0x1e0fffffL); // TODO: figure out the Namecoin value of this
@@ -100,27 +100,6 @@ public abstract class AbstractNamecoinParams extends NetworkParameters implement
         // BIP 43 recommends using these values regardless of which blockchain is in use.
         bip32HeaderP2PKHpub = 0x0488B21E; //The 4 byte header that serializes in base58 to "xpub".
         bip32HeaderP2PKHpriv = 0x0488ADE4; //The 4 byte header that serializes in base58 to "xprv"
-    }
-
-    private static AltcoinBlock createGenesis(NetworkParameters params) {
-        AltcoinBlock genesisBlock = new AltcoinBlock(params, Block.BLOCK_VERSION_GENESIS);
-        Transaction t = new Transaction(params);
-        try {
-            // "... choose what comes next.  Lives of your own, or a return to chains. -- V"
-            byte[] bytes = Utils.HEX.decode
-                    ("04ff7f001c020a024b2e2e2e2063686f6f7365207768617420636f6d6573206e6578742e20204c69766573206f6620796f7572206f776e2c206f7220612072657475726e20746f20636861696e732e202d2d2056");
-            t.addInput(new TransactionInput(params, t, bytes));
-            ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
-            Script.writeBytes(scriptPubKeyBytes, Utils.HEX.decode
-                    ("04b620369050cd899ffbbc4e8ee51e8c4534a855bb463439d63d235d4779685d8b6f4870a238cf365ac94fa13ef9a2a22cd99d0d5ee86dcabcafce36c7acf43ce5"));
-            scriptPubKeyBytes.write(ScriptOpCodes.OP_CHECKSIG);
-            t.addOutput(new TransactionOutput(params, t, COIN.multiply(50), scriptPubKeyBytes.toByteArray()));
-        } catch (Exception e) {
-            // Cannot happen.
-            throw new RuntimeException(e);
-        }
-        genesisBlock.addTransaction(t);
-        return genesisBlock;
     }
 
     @Override
