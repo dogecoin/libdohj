@@ -16,9 +16,14 @@
 
 package org.libdohj.params;
 
-import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.*;
+import org.bitcoinj.script.Script;
+import org.bitcoinj.script.ScriptOpCodes;
+
+import java.io.ByteArrayOutputStream;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.bitcoinj.core.Coin.COIN;
 
 /**
  * Parameters for the main Dogecoin production network on which people trade
@@ -29,6 +34,11 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
     public static final int MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED = 1900;
     public static final int MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 1500;
     protected static final int DIFFICULTY_CHANGE_TARGET = 145000;
+    private static final Sha256Hash GENESIS_HASH = Sha256Hash.wrap("1a91e3dace36e2be3bf030a65679fe821aa1d6ef92e7c9902eb318182c355691");
+    private static final long GENESIS_TIME = 1386325540L;
+    private static final long GENESIS_NONCE = 99943L;
+    private static final long STANDARD_MAX_DIFFICULTY_TARGET = 0x1e0ffff0L;
+
 
     public DogecoinMainNetParams() {
         super(DIFFICULTY_CHANGE_TARGET);
@@ -43,18 +53,12 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
         // we'll add independent headers for BIP32 legacy and BIP44.
         bip32HeaderP2PKHpub = 0x02facafd; //The 4 byte header that serializes in base58 to "dgub".
         bip32HeaderP2PKHpriv =  0x02fac398; //The 4 byte header that serializes in base58 to "dgpv".
-        genesisBlock.setDifficultyTarget(0x1e0ffff0L);
-        genesisBlock.setTime(1386325540L);
-        genesisBlock.setNonce(99943L);
         id = ID_DOGE_MAINNET;
         subsidyDecreaseBlockCount = 100000;
         spendableCoinbaseDepth = 100;
 
         // Note this is an SHA256 hash, not a Scrypt hash. Scrypt hashes are only
         // used in difficulty calculations.
-        String genesisHash = genesisBlock.getHashAsString();
-        checkState(genesisHash.equals("1a91e3dace36e2be3bf030a65679fe821aa1d6ef92e7c9902eb318182c355691"),
-                genesisHash);
 
         majorityEnforceBlockUpgrade = MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED;
@@ -90,6 +94,41 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
                 "seed.doger.dogecoin.com"
         };
     }
+
+    private static AltcoinBlock createGenesis(NetworkParameters params) {
+        AltcoinBlock genesisBlock = new AltcoinBlock(params, Block.BLOCK_VERSION_GENESIS);
+        Transaction t = new Transaction(params);
+        try {
+            byte[] bytes = Utils.HEX.decode
+                    ("04ffff001d0104084e696e746f6e646f");
+            t.addInput(new TransactionInput(params, t, bytes));
+            ByteArrayOutputStream scriptPubKeyBytes = new ByteArrayOutputStream();
+            Script.writeBytes(scriptPubKeyBytes, Utils.HEX.decode
+                    ("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9"));
+            scriptPubKeyBytes.write(ScriptOpCodes.OP_CHECKSIG);
+            t.addOutput(new TransactionOutput(params, t, COIN.multiply(88), scriptPubKeyBytes.toByteArray()));
+        } catch (Exception e) {
+            // Cannot happen.
+            throw new RuntimeException(e);
+        }
+        genesisBlock.addTransaction(t);
+        return genesisBlock;
+    }
+
+    @Override
+    public Block getGenesisBlock() {
+        synchronized (GENESIS_HASH) {
+            if (genesisBlock == null) {
+                genesisBlock = createGenesis(this);
+                genesisBlock.setDifficultyTarget(STANDARD_MAX_DIFFICULTY_TARGET);
+                genesisBlock.setTime(GENESIS_TIME);
+                genesisBlock.setNonce(GENESIS_NONCE);
+                checkState(genesisBlock.getHash().equals(GENESIS_HASH), "Invalid genesis hash");
+            }
+        }
+        return genesisBlock;
+    }
+
 
     private static DogecoinMainNetParams instance;
     public static synchronized DogecoinMainNetParams get() {

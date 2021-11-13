@@ -17,18 +17,14 @@
 
 package org.libdohj.params;
 
-import org.bitcoinj.core.Utils;
+import org.bitcoinj.core.*;
 import org.bouncycastle.util.encoders.Hex;
 
 import static com.google.common.base.Preconditions.checkState;
 import java.io.ByteArrayOutputStream;
-import org.bitcoinj.core.AltcoinBlock;
-import org.bitcoinj.core.Block;
+
 import static org.bitcoinj.core.Coin.COIN;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.TransactionInput;
-import org.bitcoinj.core.TransactionOutput;
+
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptOpCodes;
 
@@ -41,11 +37,15 @@ public class LitecoinTestNet3Params extends AbstractLitecoinParams {
     public static final int TESTNET_MAJORITY_WINDOW = 100;
     public static final int TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED = 75;
     public static final int TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = 51;
+    private static final Sha256Hash GENESIS_HASH = Sha256Hash.wrap("f5ae71e26c74beacc88382716aced69cddf3dffff24f384e1808905e0188f68f");
+    private static final long GENESIS_TIME = 1317798646L;
+    private static final long GENESIS_NONCE = 385270584;
+    private static final long STANDARD_MAX_DIFFICULTY_TARGET = 0x1e0ffff0L;
+
 
     public LitecoinTestNet3Params() {
         super();
         id = ID_LITE_TESTNET;
-        // Genesis hash is f5ae71e26c74beacc88382716aced69cddf3dffff24f384e1808905e0188f68f
         packetMagic = 0xfcc1b7dc;
 
         maxTarget = Utils.decodeCompactBits(0x1e0fffffL);
@@ -55,13 +55,8 @@ public class LitecoinTestNet3Params extends AbstractLitecoinParams {
         dumpedPrivateKeyHeader = 239;
         segwitAddressHrp = "tltc";
 
-        this.genesisBlock = createGenesis(this);
         spendableCoinbaseDepth = 30;
         subsidyDecreaseBlockCount = 100000;
-
-        String genesisHash = genesisBlock.getHashAsString();
-        checkState(genesisHash.equals("f5ae71e26c74beacc88382716aced69cddf3dffff24f384e1808905e0188f68f"));
-        alertSigningKey = Hex.decode("0449623fc74489a947c4b15d579115591add020e53b3490bf47297dfa3762250625f8ecc2fb4fc59f69bdce8f7080f3167808276ed2c79d297054367566038aa82");
 
         majorityEnforceBlockUpgrade = TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED;
@@ -94,9 +89,20 @@ public class LitecoinTestNet3Params extends AbstractLitecoinParams {
             throw new RuntimeException(e);
         }
         genesisBlock.addTransaction(t);
-        genesisBlock.setTime(1317798646L);
-        genesisBlock.setDifficultyTarget(0x1e0ffff0L);
-        genesisBlock.setNonce(385270584);
+        return genesisBlock;
+    }
+
+    @Override
+    public Block getGenesisBlock() {
+        synchronized (GENESIS_HASH) {
+            if (genesisBlock == null) {
+                genesisBlock = createGenesis(this);
+                genesisBlock.setDifficultyTarget(STANDARD_MAX_DIFFICULTY_TARGET);
+                genesisBlock.setTime(GENESIS_TIME);
+                genesisBlock.setNonce(GENESIS_NONCE);
+                checkState(genesisBlock.getHash().equals(GENESIS_HASH), "Invalid genesis hash");
+            }
+        }
         return genesisBlock;
     }
 
