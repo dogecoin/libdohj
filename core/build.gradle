@@ -64,13 +64,11 @@ artifacts {
     archives javadocJar
 }
 
-
-
 publishing {
     publications {
         maven(MavenPublication) {
             groupId = 'org.libdohj'
-            artifactId = 'library'
+            artifactId = 'libdohj'
             version = '0.16-SNAPSHOT'
 
             from components.java
