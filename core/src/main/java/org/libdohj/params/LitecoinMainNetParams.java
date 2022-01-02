@@ -38,6 +38,7 @@ import org.bitcoinj.script.ScriptOpCodes;
  * goods and services.
  */
 public class LitecoinMainNetParams extends AbstractLitecoinParams {
+    // Litecoin matches Bitcoin parameters, see https://github.com/litecoin-project/litecoin/blob/0.13/src/chainparams.cpp#L74
     public static final int MAINNET_MAJORITY_WINDOW = MainNetParams.MAINNET_MAJORITY_WINDOW;
     public static final int MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED = MainNetParams.MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED;
     public static final int MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE = MainNetParams.MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
