@@ -51,7 +51,7 @@ public class MerkleBranch extends ChildMessage {
         super(params);
         setParent(parent);
 
-        this.hashes = new ArrayList<Sha256Hash>();
+        this.hashes = new ArrayList<>();
         this.index = 0;
     }
 
@@ -69,7 +69,6 @@ public class MerkleBranch extends ChildMessage {
      * @param payload Bitcoin protocol formatted byte array containing message content.
      * @param offset The location of the first payload byte within the array.
      * @param serializer the serializer to use for this message.
-     * @throws ProtocolException
      */
     public MerkleBranch(NetworkParameters params, ChildMessage parent, byte[] payload, int offset,
                         MessageSerializer serializer)
@@ -89,16 +88,16 @@ public class MerkleBranch extends ChildMessage {
     public static int calcLength(byte[] buf, int offset) {
         VarInt varint = new VarInt(buf, offset);
 
-        return ((int) varint.value) * 4 + 4;
+        return varint.intValue() * 4 + 4;
     }
 
     @Override
     protected void parse() throws ProtocolException {
         cursor = offset;
 
-        final int hashCount = (int) readVarInt();
+        final int hashCount = readVarInt().intValue();
         optimalEncodingMessageSize += VarInt.sizeOf(hashCount);
-        hashes = new ArrayList<Sha256Hash>(hashCount);
+        hashes = new ArrayList<>(hashCount);
         for (int hashIdx = 0; hashIdx < hashCount; hashIdx++) {
             hashes.add(readHash());
         }
@@ -185,8 +184,6 @@ public class MerkleBranch extends ChildMessage {
     public int getOptimalEncodingMessageSize() {
         if (optimalEncodingMessageSize != 0)
             return optimalEncodingMessageSize;
-        if (optimalEncodingMessageSize != 0)
-            return optimalEncodingMessageSize;
         optimalEncodingMessageSize = getMessageSize();
         return optimalEncodingMessageSize;
     }
@@ -207,9 +204,7 @@ public class MerkleBranch extends ChildMessage {
         MerkleBranch input = (MerkleBranch) o;
 
         if (!hashes.equals(input.hashes)) return false;
-        if (index != input.index) return false;
-
-        return true;
+        return index == input.index;
     }
 
     @Override
