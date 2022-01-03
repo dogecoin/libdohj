@@ -18,15 +18,14 @@
 package org.libdohj.params;
 
 import org.bitcoinj.core.*;
-import org.bouncycastle.util.encoders.Hex;
-
-import static com.google.common.base.Preconditions.checkState;
-import java.io.ByteArrayOutputStream;
-
-import static org.bitcoinj.core.Coin.COIN;
-
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptOpCodes;
+import org.bouncycastle.util.encoders.Hex;
+
+import java.io.ByteArrayOutputStream;
+
+import static com.google.common.base.Preconditions.checkState;
+import static org.bitcoinj.core.Coin.COIN;
 
 /**
  * Parameters for the testnet, a separate public instance of Litecoin that has

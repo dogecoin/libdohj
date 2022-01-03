@@ -247,11 +247,25 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
         }
     }
 
+    /**
+     * Copy the block without transactions into the provided empty block.
+     * This MUST be called before getHash() is called on the block, as
+     * otherwise the cached hash may be inaccurate.
+     */
+    private void copyBitcoinHeaderTo(final Block block) {
+        block.setNonce(this.getNonce());
+        block.setPrevBlockHash(this.getPrevBlockHash());
+        block.setMerkleRoot(this.getPrevBlockHash());
+        block.setTime(this.getTimeSeconds());
+        block.setDifficultyTarget(this.getDifficultyTarget());
+        block.transactions = null;
+    }
+
     /** Returns a copy of the block, but without any transactions. */
     @Override
     public Block cloneAsHeader() {
         AltcoinBlock block = new AltcoinBlock(params, getRawVersion());
-        super.copyBitcoinHeaderTo(block);
+        copyBitcoinHeaderTo(block);
         block.auxpow = auxpow;
         return block;
     }

@@ -16,35 +16,20 @@
 
 package org.libdohj.params;
 
-import java.io.ByteArrayOutputStream;
-import java.math.BigInteger;
-import java.util.concurrent.TimeUnit;
-
 import com.google.common.base.Stopwatch;
-
-import org.bitcoinj.core.AltcoinBlock;
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Coin;
-import static org.bitcoinj.core.Coin.COIN;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.VerificationException;
-import org.bitcoinj.script.Script;
-import org.bitcoinj.script.ScriptOpCodes;
+import org.bitcoinj.core.*;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
 import org.bitcoinj.utils.MonetaryFormat;
-
+import org.libdohj.core.AltcoinSerializer;
+import org.libdohj.core.AuxPoWNetworkParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.StoredBlock;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.TransactionInput;
-import org.bitcoinj.core.TransactionOutput;
-import org.bitcoinj.core.Utils;
-import org.libdohj.core.AltcoinSerializer;
-import org.libdohj.core.AuxPoWNetworkParameters;
+import java.math.BigInteger;
+import java.util.concurrent.TimeUnit;
+
+import static org.bitcoinj.core.Coin.COIN;
 
 // TODO: review this
 

@@ -2,7 +2,7 @@ apply plugin: 'java-library'
 
 dependencies {
     implementation project(':core')
-    implementation 'org.bitcoinj:bitcoinj-core:0.15.10'
+    implementation 'org.bitcoinj:bitcoinj-core:0.16.1'
     implementation 'com.google.guava:guava:30.0-android'
     implementation 'net.sf.jopt-simple:jopt-simple:4.3'
     implementation 'org.slf4j:slf4j-api:1.7.30'
