@@ -146,6 +146,7 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     }
 
     @Override
+    @Deprecated
     public Coin getBlockInflation(int height) {
         final AltcoinNetworkParameters altParams = (AltcoinNetworkParameters) params;
         return altParams.getBlockSubsidy(height);
