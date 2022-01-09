@@ -15,13 +15,14 @@
  */
 package org.libdohj.params;
 
-import org.bitcoinj.core.*;
+import org.bitcoinj.core.AltcoinBlock;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.Context;
 import org.junit.Before;
 import org.junit.Test;
-import org.libdohj.core.AltcoinSerializer;
 
 import java.io.IOException;
-
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -107,30 +108,20 @@ public class AbstractDogecoinParamsTest {
     @Test
     public void shouldCalculateRetarget() throws IOException {
         // Do a more in-depth test for the first retarget
-        byte[] payload;
-        AltcoinSerializer serializer = (AltcoinSerializer)params.getDefaultSerializer();
-        final AltcoinBlock block239;
-        final AltcoinBlock block479;
-        final AltcoinBlock block480;
-        final AltcoinBlock block719;
-        final AltcoinBlock block720;
-
-        payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block239.bin"));
-        block239 = (AltcoinBlock)serializer.makeBlock(payload);
-        payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block479.bin"));
-        block479 = (AltcoinBlock)serializer.makeBlock(payload);
-        payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block480.bin"));
-        block480 = (AltcoinBlock)serializer.makeBlock(payload);
-        payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block719.bin"));
-        block719 = (AltcoinBlock)serializer.makeBlock(payload);
-        payload = Util.getBytes(getClass().getResourceAsStream("dogecoin_block720.bin"));
-        block720 = (AltcoinBlock)serializer.makeBlock(payload);
-
-        assertEquals(Sha256Hash.wrap("f9533416310fc4484cf43405a858b06afc9763ad401d267c1835d77e7d225a4e"), block239.getHash());
-        assertEquals(Sha256Hash.wrap("ed83c923b532835f6597f70def42910aa9e06880e8a19b68f6b4a787f2b4b69f"), block479.getHash());
-        assertEquals(Sha256Hash.wrap("a0e6d1cdef02b394d31628c3281f67e8534bec74fda1a4294b58be80c3fdf3f3"), block480.getHash());
-        assertEquals(Sha256Hash.wrap("82e56e141ccfe019d475382d9a108ef86afeb297d95443dfd7250e57af805696"), block719.getHash());
-        assertEquals(Sha256Hash.wrap("6b34f1a7de1954beb0ddf100bb2b618ff0183b6ae2b4a9376721ef8e04ab3b39"), block720.getHash());
+        final String[][] blocks = {
+            {"dogecoin_block239.bin", "f9533416310fc4484cf43405a858b06afc9763ad401d267c1835d77e7d225a4e"},
+            {"dogecoin_block479.bin", "ed83c923b532835f6597f70def42910aa9e06880e8a19b68f6b4a787f2b4b69f"},
+            {"dogecoin_block480.bin", "a0e6d1cdef02b394d31628c3281f67e8534bec74fda1a4294b58be80c3fdf3f3"},
+            {"dogecoin_block719.bin", "82e56e141ccfe019d475382d9a108ef86afeb297d95443dfd7250e57af805696"},
+            {"dogecoin_block720.bin", "6b34f1a7de1954beb0ddf100bb2b618ff0183b6ae2b4a9376721ef8e04ab3b39"}
+        };
+        final BlockLoader loader = new BlockLoader(params);
+        final Map<String, AltcoinBlock> loadedBlocks = loader.loadBlocks(blocks);
+        final AltcoinBlock block239 = loadedBlocks.get("f9533416310fc4484cf43405a858b06afc9763ad401d267c1835d77e7d225a4e");
+        final AltcoinBlock block479 = loadedBlocks.get("ed83c923b532835f6597f70def42910aa9e06880e8a19b68f6b4a787f2b4b69f");
+        final AltcoinBlock block480 = loadedBlocks.get("a0e6d1cdef02b394d31628c3281f67e8534bec74fda1a4294b58be80c3fdf3f3");
+        final AltcoinBlock block719 = loadedBlocks.get("82e56e141ccfe019d475382d9a108ef86afeb297d95443dfd7250e57af805696");
+        final AltcoinBlock block720 = loadedBlocks.get("6b34f1a7de1954beb0ddf100bb2b618ff0183b6ae2b4a9376721ef8e04ab3b39");
 
         assertEquals(block480.getDifficultyTarget(), params.calculateNewDifficultyTargetInner(479, block479, block480, block239));
         assertEquals(block720.getDifficultyTarget(), params.calculateNewDifficultyTargetInner(719, block719, block720, block479));
