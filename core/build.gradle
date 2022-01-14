@@ -1,4 +1,5 @@
 apply plugin: 'java-library'
+apply plugin: 'checkstyle'
 apply plugin: 'maven'
 
 version = '0.15-SNAPSHOT'
@@ -38,6 +39,11 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 task sourcesJar(type: Jar, dependsOn: classes) {
     archiveClassifier  = 'sources'
     from sourceSets.main.allSource
+}
+
+tasks.withType(Checkstyle) {
+    // Generated, can ignore.
+    exclude 'com/dogecoin/protocols/payments/**'
 }
 
 artifacts {

@@ -1,4 +1,5 @@
 apply plugin: 'java-library'
+apply plugin: 'checkstyle'
 
 dependencies {
     implementation project(':core')

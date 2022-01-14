@@ -15,4 +15,5 @@ allprojects {
     }
 
     group = 'com.dogecoin'
+
 }

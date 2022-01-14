@@ -2,9 +2,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,12 @@
 package com.dogecoin.dogecoinj.protocols.payments;
 
 import com.dogecoin.dogecoinj.protocols.payments.PaymentProtocol.PkiVerificationData;
-import org.bitcoinj.core.*;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.crypto.TrustStoreLoader;
 import org.bitcoinj.params.MainNetParams;
@@ -30,8 +35,13 @@ import org.bitcoin.protocols.payments.Protos;
 
 import javax.annotation.Nullable;
 
-import java.io.*;
-import java.net.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -77,7 +87,8 @@ public class PaymentSession {
      * Stores the calculated PKI verification data, or null if none is available.
      * Only valid after the session is created with the verifyPki parameter set to true.
      */
-    @Nullable public final PkiVerificationData pkiVerificationData;
+    @Nullable
+    public final PkiVerificationData pkiVerificationData;
 
     /**
      * <p>Returns a future that will be notified with a PaymentSession object after it is fetched using the provided uri.
@@ -117,8 +128,9 @@ public class PaymentSession {
     public static ListenableFuture<PaymentSession> createFromBitcoinUri(final BitcoinURI uri, final boolean verifyPki, @Nullable final TrustStoreLoader trustStoreLoader)
             throws PaymentProtocolException {
         String url = uri.getPaymentRequestUrl();
-        if (url == null)
+        if (url == null) {
             throw new PaymentProtocolException.InvalidPaymentRequestURL("No payment request URL (r= parameter) in BitcoinURI " + uri);
+        }
         try {
             return fetchPaymentRequest(new URI(url), verifyPki, trustStoreLoader);
         } catch (URISyntaxException e) {
@@ -143,6 +155,10 @@ public class PaymentSession {
      * If the payment request object specifies a PKI method, then the system trust store will
      * be used to verify the signature provided by the payment request. An exception is thrown by the future if the
      * signature cannot be verified.
+     *
+     * @param url specified payment url.
+     * @param verifyPki if pki should be validated
+     * @throws PaymentProtocolException if the specified url is invalid
      */
     public static ListenableFuture<PaymentSession> createFromUrl(final String url, final boolean verifyPki)
             throws PaymentProtocolException {
@@ -156,14 +172,20 @@ public class PaymentSession {
      * be used to verify the signature provided by the payment request. An exception is thrown by the future if the
      * signature cannot be verified.
      * If trustStoreLoader is null, the system default trust store is used.
+     *
+     * @param url specified payment url.
+     * @param verifyPki if pki should be validated
+     * @param trustStoreLoader specified trust store loader, otherwise system default.
+     * @throws PaymentProtocolException if the specified url is invalid
      */
     public static ListenableFuture<PaymentSession> createFromUrl(final String url, final boolean verifyPki, @Nullable final TrustStoreLoader trustStoreLoader)
             throws PaymentProtocolException {
-        if (url == null)
+        if (url == null) {
             throw new PaymentProtocolException.InvalidPaymentRequestURL("null paymentRequestUrl");
+        }
         try {
             return fetchPaymentRequest(new URI(url), verifyPki, trustStoreLoader);
-        } catch(URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw new PaymentProtocolException.InvalidPaymentRequestURL(e);
         }
     }
@@ -172,7 +194,7 @@ public class PaymentSession {
         return executor.submit(new Callable<PaymentSession>() {
             @Override
             public PaymentSession call() throws Exception {
-                HttpURLConnection connection = (HttpURLConnection)uri.toURL().openConnection();
+                HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
                 connection.setRequestProperty("Accept", PaymentProtocol.MIMETYPE_PAYMENTREQUEST);
                 connection.setUseCaches(false);
                 Protos.PaymentRequest paymentRequest = Protos.PaymentRequest.parseFrom(connection.getInputStream());
@@ -201,6 +223,11 @@ public class PaymentSession {
      * Creates a PaymentSession from the provided {@link Protos.PaymentRequest}.
      * If verifyPki is true, also validates the signature and throws an exception if it fails.
      * If trustStoreLoader is null, the system default trust store is used.
+     *
+     * @param request payment request.
+     * @param verifyPki if pki should be verified and signature should be validated.
+     * @param trustStoreLoader specified trust store loader, otherwise system default.
+     * @throws PaymentProtocolException if payment request should be verified and could not be verified.
      */
     public PaymentSession(Protos.PaymentRequest request, boolean verifyPki, @Nullable final TrustStoreLoader trustStoreLoader) throws PaymentProtocolException {
         this.trustStoreLoader = trustStoreLoader != null ? trustStoreLoader : new TrustStoreLoader.DefaultTrustStoreLoader();
@@ -208,9 +235,7 @@ public class PaymentSession {
         if (verifyPki) {
             try {
                 pkiVerificationData = PaymentProtocol.verifyPaymentRequestPki(request, this.trustStoreLoader.getKeyStore());
-            } catch (IOException x) {
-                throw new PaymentProtocolException(x);
-            } catch (KeyStoreException x) {
+            } catch (IOException | KeyStoreException x) {
                 throw new PaymentProtocolException(x);
             }
         } else {
@@ -233,11 +258,12 @@ public class PaymentSession {
     /**
      * Returns the memo included by the merchant in the payment request, or null if not found.
      */
-    @Nullable public String getMemo() {
-        if (paymentDetails.hasMemo())
+    @Nullable
+    public String getMemo() {
+        if (paymentDetails.hasMemo()) {
             return paymentDetails.getMemo();
-        else
-            return null;
+        }
+        return null;
     }
 
     /**
@@ -257,11 +283,12 @@ public class PaymentSession {
     /**
      * Returns the expires time of the payment request, or null if none.
      */
-    @Nullable public Date getExpires() {
-        if (paymentDetails.hasExpires())
+    @Nullable
+    public Date getExpires() {
+        if (paymentDetails.hasExpires()) {
             return new Date(paymentDetails.getExpires() * 1000);
-        else
-            return null;
+        }
+        return null;
     }
 
     /**
@@ -275,20 +302,23 @@ public class PaymentSession {
      * Returns the payment url where the Payment message should be sent.
      * Returns null if no payment url was provided in the PaymentRequest.
      */
-    public @Nullable String getPaymentUrl() {
-        if (paymentDetails.hasPaymentUrl())
+    public @Nullable
+    String getPaymentUrl() {
+        if (paymentDetails.hasPaymentUrl()) {
             return paymentDetails.getPaymentUrl();
+        }
         return null;
     }
 
     /**
      * Returns the merchant data included by the merchant in the payment request, or null if none.
      */
-    @Nullable public byte[] getMerchantData() {
-        if (paymentDetails.hasMerchantData())
+    @Nullable
+    public byte[] getMerchantData() {
+        if (paymentDetails.hasMerchantData()) {
             return paymentDetails.getMerchantData().toByteArray();
-        else
-            return null;
+        }
+        return null;
     }
 
     /**
@@ -296,8 +326,9 @@ public class PaymentSession {
      */
     public SendRequest getSendRequest() {
         Transaction tx = new Transaction(params);
-        for (Protos.Output output : paymentDetails.getOutputsList())
+        for (Protos.Output output : paymentDetails.getOutputsList()) {
             tx.addOutput(new TransactionOutput(params, tx, Coin.valueOf(output.getAmount()), output.getScript().toByteArray()));
+        }
         return SendRequest.forTx(tx).fromPaymentDetails(paymentDetails);
     }
 
@@ -312,13 +343,16 @@ public class PaymentSession {
      * @param refundAddr will be used by the merchant to send money back if there was a problem.
      * @param memo is a message to include in the payment message sent to the merchant.
      */
-    public @Nullable ListenableFuture<PaymentProtocol.Ack> sendPayment(List<Transaction> txns, @Nullable Address refundAddr, @Nullable String memo)
+    public @Nullable
+    ListenableFuture<PaymentProtocol.Ack> sendPayment(List<Transaction> txns, @Nullable Address refundAddr, @Nullable String memo)
             throws PaymentProtocolException, VerificationException, IOException {
         Protos.Payment payment = getPayment(txns, refundAddr, memo);
-        if (payment == null)
+        if (payment == null) {
             return null;
-        if (isExpired())
+        }
+        if (isExpired()) {
             throw new PaymentProtocolException.Expired("PaymentRequest is expired");
+        }
         URL url;
         try {
             url = new URL(paymentDetails.getPaymentUrl());
@@ -336,18 +370,27 @@ public class PaymentSession {
      * @param refundAddr will be used by the merchant to send money back if there was a problem.
      * @param memo is a message to include in the payment message sent to the merchant.
      */
-    public @Nullable Protos.Payment getPayment(List<Transaction> txns, @Nullable Address refundAddr, @Nullable String memo)
-            throws IOException, PaymentProtocolException.InvalidNetwork {
+    public @Nullable
+    Protos.Payment getPayment(List<Transaction> txns, @Nullable Address refundAddr, @Nullable String memo)
+            throws PaymentProtocolException.InvalidNetwork {
         if (paymentDetails.hasPaymentUrl()) {
-            for (Transaction tx : txns)
-                if (!tx.getParams().equals(params))
+            for (Transaction tx : txns) {
+                if (!tx.getParams().equals(params)) {
                     throw new PaymentProtocolException.InvalidNetwork(params.getPaymentProtocolId());
+                }
+            }
             return PaymentProtocol.createPaymentMessage(txns, totalValue, refundAddr, memo, getMerchantData());
         } else {
             return null;
         }
     }
 
+    /**
+     * Sends the payment to the merchant who generated the payment.
+     * @param url payment url
+     * @param payment payment
+     * @return payment response
+     */
     @VisibleForTesting
     protected ListenableFuture<PaymentProtocol.Ack> sendPayment(final URL url, final Protos.Payment payment) {
         return executor.submit(new Callable<PaymentProtocol.Ack>() {
@@ -377,53 +420,71 @@ public class PaymentSession {
 
     private void parsePaymentRequest(Protos.PaymentRequest request) throws PaymentProtocolException {
         try {
-            if (request == null)
+            if (request == null) {
                 throw new PaymentProtocolException("request cannot be null");
-            if (request.getPaymentDetailsVersion() != 1)
+            }
+            if (request.getPaymentDetailsVersion() != 1) {
                 throw new PaymentProtocolException.InvalidVersion("Version 1 required. Received version " + request.getPaymentDetailsVersion());
+            }
             paymentRequest = request;
-            if (!request.hasSerializedPaymentDetails())
+            if (!request.hasSerializedPaymentDetails()) {
                 throw new PaymentProtocolException("No PaymentDetails");
+            }
             paymentDetails = Protos.PaymentDetails.newBuilder().mergeFrom(request.getSerializedPaymentDetails()).build();
-            if (paymentDetails == null)
+            if (paymentDetails == null) {
                 throw new PaymentProtocolException("Invalid PaymentDetails");
-            if (!paymentDetails.hasNetwork())
+            }
+            if (!paymentDetails.hasNetwork()) {
                 params = MainNetParams.get();
-            else
+            } else {
                 params = NetworkParameters.fromPmtProtocolID(paymentDetails.getNetwork());
-            if (params == null)
+            }
+            if (params == null) {
                 throw new PaymentProtocolException.InvalidNetwork("Invalid network " + paymentDetails.getNetwork());
-            if (paymentDetails.getOutputsCount() < 1)
+            }
+            if (paymentDetails.getOutputsCount() < 1) {
                 throw new PaymentProtocolException.InvalidOutputs("No outputs");
+            }
             for (Protos.Output output : paymentDetails.getOutputsList()) {
-                if (output.hasAmount())
+                if (output.hasAmount()) {
                     totalValue = totalValue.add(Coin.valueOf(output.getAmount()));
+                }
             }
             // This won't ever happen in practice. It would only happen if the user provided outputs
             // that are obviously invalid. Still, we don't want to silently overflow.
-            if (totalValue.compareTo(NetworkParameters.MAX_MONEY) > 0)
+            if (totalValue.compareTo(NetworkParameters.MAX_MONEY) > 0) {
                 throw new PaymentProtocolException.InvalidOutputs("The outputs are way too big.");
+            }
         } catch (InvalidProtocolBufferException e) {
             throw new PaymentProtocolException(e);
         }
     }
 
-    /** Returns the value of pkiVerificationData or null if it wasn't verified at construction time. */
-    @Nullable public PkiVerificationData verifyPki() {
+    /**
+     * Returns the value of pkiVerificationData or null if it wasn't verified at construction time.
+     */
+    @Nullable
+    public PkiVerificationData verifyPki() {
         return pkiVerificationData;
     }
 
-    /** Gets the params as read from the PaymentRequest.network field: main is the default if missing. */
+    /**
+     * Gets the params as read from the PaymentRequest.network field: main is the default if missing.
+     */
     public NetworkParameters getNetworkParameters() {
         return params;
     }
 
-    /** Returns the protobuf that this object was instantiated with. */
+    /**
+     * Returns the protobuf that this object was instantiated with.
+     */
     public Protos.PaymentRequest getPaymentRequest() {
         return paymentRequest;
     }
 
-    /** Returns the protobuf that describes the payment to be made. */
+    /**
+     * Returns the protobuf that describes the payment to be made.
+     */
     public Protos.PaymentDetails getPaymentDetails() {
         return paymentDetails;
     }
