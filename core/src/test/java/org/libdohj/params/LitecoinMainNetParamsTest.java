@@ -70,6 +70,10 @@ public class LitecoinMainNetParamsTest {
         assertEquals(expected, actual);
     }
 
+    /**
+     * Test connecting just block 1, while verifying progress at a number of steps. This is designed to expose if any
+     * of the more fundamental functionality is broken before we try connecting several hundred headers.
+     */
     @Test
     public void shouldConnectBlock1() throws BlockStoreException, PrunedException, IOException {
         final BlockStore store = new MemoryBlockStore(params);
@@ -90,5 +94,23 @@ public class LitecoinMainNetParamsTest {
         assertEquals(Sha256Hash.wrap(GENESIS_BLOCK_HASH), block1.getPrevBlockHash());
         assertTrue(blockChain.add(params.getGenesisBlock()));
         assertTrue(blockChain.add(block1));
+    }
+
+    /**
+     * This connects the first n blocks - this is more of a functional test than the single block
+     * test, and should handle cases such as difficulty recalculation.
+     */
+    @Test
+    public void shouldConnectBlocks() throws BlockStoreException, PrunedException, IOException {
+        final BlockStore store = new MemoryBlockStore(params);
+        final Wallet wallet = Wallet.createDeterministic(params, Script.ScriptType.P2PKH);
+        final StoredBlock storedGenesis = new StoredBlock(params.getGenesisBlock(), params.genesisBlock.getWork(), 0);
+        store.put(storedGenesis);
+        final Map<String, AltcoinBlock> loadedBlocks = loader.loadAllHeaders("litecoin_block1-240.bin", 80);
+        final BlockChain blockChain = new BlockChain(params, wallet, store);
+        assertTrue(blockChain.add(params.getGenesisBlock()));
+        for (Block block: loadedBlocks.values()) {
+            assertTrue(blockChain.add(block));
+        }
     }
 }
