@@ -5,7 +5,7 @@ version = '0.15-SNAPSHOT'
 archivesBaseName = 'libdohj-core'
 
 dependencies {
-    api 'org.bitcoinj:bitcoinj-core:0.15.10'
+    api 'org.bitcoinj:bitcoinj-core:0.16.1'
     implementation 'com.madgag.spongycastle:core:1.58.0.0'
     implementation 'com.google.guava:guava:30.0-android'
     implementation 'com.lambdaworks:scrypt:1.4.0'

@@ -81,6 +81,7 @@ public abstract class AbstractLitecoinParams extends NetworkParameters implement
     private static final Coin BASE_SUBSIDY = COIN.multiply(50);
 
     protected Logger log = LoggerFactory.getLogger(AbstractLitecoinParams.class);
+    protected AltcoinBlock genesisBlock;
 
     public AbstractLitecoinParams() {
         super();

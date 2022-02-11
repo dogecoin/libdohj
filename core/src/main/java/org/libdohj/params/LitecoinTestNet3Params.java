@@ -61,7 +61,6 @@ public class LitecoinTestNet3Params extends AbstractLitecoinParams {
 
         String genesisHash = genesisBlock.getHashAsString();
         checkState(genesisHash.equals("f5ae71e26c74beacc88382716aced69cddf3dffff24f384e1808905e0188f68f"));
-        alertSigningKey = Hex.decode("0449623fc74489a947c4b15d579115591add020e53b3490bf47297dfa3762250625f8ecc2fb4fc59f69bdce8f7080f3167808276ed2c79d297054367566038aa82");
 
         majorityEnforceBlockUpgrade = TESTNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = TESTNET_MAJORITY_REJECT_BLOCK_OUTDATED;
@@ -111,6 +110,11 @@ public class LitecoinTestNet3Params extends AbstractLitecoinParams {
     @Override
     public String getPaymentProtocolId() {
         return ID_LITE_TESTNET;
+    }
+
+    @Override
+    public Block getGenesisBlock() {
+        return genesisBlock;
     }
 
     @Override

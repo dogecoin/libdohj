@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.List;
 
 import static org.bitcoinj.core.Utils.reverseBytes;
@@ -250,8 +251,14 @@ public class AltcoinBlock extends org.bitcoinj.core.Block {
     /** Returns a copy of the block, but without any transactions. */
     @Override
     public Block cloneAsHeader() {
-        AltcoinBlock block = new AltcoinBlock(params, getRawVersion());
-        super.copyBitcoinHeaderTo(block);
+        AltcoinBlock block = new AltcoinBlock(params,
+                getRawVersion(),
+                getPrevBlockHash(),
+                getMerkleRoot(),
+                getTimeSeconds(),
+                getDifficultyTarget(),
+                getNonce(),
+                Collections.emptyList());
         block.auxpow = auxpow;
         return block;
     }
