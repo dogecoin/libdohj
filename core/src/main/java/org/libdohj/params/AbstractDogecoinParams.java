@@ -90,6 +90,7 @@ public abstract class AbstractDogecoinParams extends NetworkParameters implement
     protected final int newInterval;
     protected final int newTargetTimespan;
     protected final int diffChangeTarget;
+    protected final AltcoinBlock genesisBlock;
 
     protected Logger log = LoggerFactory.getLogger(AbstractDogecoinParams.class);
     public static final int DOGECOIN_PROTOCOL_VERSION_AUXPOW = 70003;

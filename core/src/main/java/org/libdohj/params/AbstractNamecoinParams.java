@@ -67,6 +67,8 @@ public abstract class AbstractNamecoinParams extends NetworkParameters implement
     public static final String CODE_MNMC = "mNMC";
     /** Currency code for base 1/1,000,000 Namecoin. */
     public static final String CODE_UNMC = "µNMC";
+    
+    protected final AltcoinBlock genesisBlock;
 
     protected int auxpowStartHeight;
     

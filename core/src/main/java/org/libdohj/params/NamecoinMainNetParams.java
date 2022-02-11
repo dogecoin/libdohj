@@ -16,6 +16,7 @@
 
 package org.libdohj.params;
 
+import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Sha256Hash;
 import org.spongycastle.util.encoders.Hex;
 
@@ -51,8 +52,6 @@ public class NamecoinMainNetParams extends AbstractNamecoinParams {
         String genesisHash = genesisBlock.getHashAsString();
         checkState(genesisHash.equals("000000000062b72c5e2ceb45fbc8587e807c155b0da735e6483dfba2f0a9c770"),
                 genesisHash);
-                // TODO: remove alert key since it's removed from Bitcoin Core / Namecoin Core
-        alertSigningKey = Hex.decode("04ba207043c1575208f08ea6ac27ed2aedd4f84e70b874db129acb08e6109a3bbb7c479ae22565973ebf0ac0391514511a22cb9345bdb772be20cfbd38be578b0c");
 
         majorityEnforceBlockUpgrade = MAINNET_MAJORITY_ENFORCE_BLOCK_UPGRADE;
         majorityRejectBlockOutdated = MAINNET_MAJORITY_REJECT_BLOCK_OUTDATED;
@@ -109,6 +108,11 @@ public class NamecoinMainNetParams extends AbstractNamecoinParams {
     public String getPaymentProtocolId() {
         // TODO: CHANGE THIS (comment from Dogecoin)
         return ID_NMC_MAINNET;
+    }
+
+    @Override
+    public Block getGenesisBlock() {
+        return genesisBlock;
     }
 
     @Override

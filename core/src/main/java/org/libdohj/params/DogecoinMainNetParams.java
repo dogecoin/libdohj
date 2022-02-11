@@ -16,6 +16,7 @@
 
 package org.libdohj.params;
 
+import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Sha256Hash;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -108,6 +109,11 @@ public class DogecoinMainNetParams extends AbstractDogecoinParams {
     public String getPaymentProtocolId() {
         // TODO: CHANGE THIS
         return ID_DOGE_MAINNET;
+    }
+
+    @Override
+    public Block getGenesisBlock() {
+        return genesisBlock;
     }
 
     @Override
