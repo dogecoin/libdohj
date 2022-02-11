@@ -15,4 +15,10 @@ allprojects {
     }
 
     group = 'com.dogecoin'
+
+    // Reproducible builds
+    tasks.withType(AbstractArchiveTask) {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+    }
 }
