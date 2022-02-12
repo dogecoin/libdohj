@@ -1,26 +1,45 @@
-apply plugin: 'java-library'
-apply plugin: 'maven'
+plugins {
+    id 'java-library'
+    id 'com.google.protobuf'
+    id 'maven-publish'
+}
 
-version = '0.15-SNAPSHOT'
+version = '0.16-SNAPSHOT'
 archivesBaseName = 'libdohj-core'
 
 dependencies {
     api 'org.bitcoinj:bitcoinj-core:0.16.1'
-    implementation 'com.madgag.spongycastle:core:1.58.0.0'
-    implementation 'com.google.guava:guava:30.0-android'
-    implementation 'com.lambdaworks:scrypt:1.4.0'
-    implementation 'com.google.protobuf:protobuf-java:3.13.0'
-    implementation 'com.squareup.okhttp3:okhttp:3.12.12'
-    implementation 'org.slf4j:slf4j-api:1.7.30'
+    api 'org.bouncycastle:bcprov-jdk15to18:1.70'
+    api 'com.google.guava:guava:31.0.1-android'
+    api 'com.google.protobuf:protobuf-javalite:3.18.0'
+    api 'com.squareup.okhttp3:okhttp:3.14.9'
+    implementation 'org.slf4j:slf4j-api:1.7.32'
     implementation 'net.jcip:jcip-annotations:1.0'
+    implementation 'com.lambdaworks:scrypt:1.4.0'
     compileOnly 'org.fusesource.leveldbjni:leveldbjni-all:1.8'
-    testImplementation 'junit:junit:4.13.1'
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.5.2'
-    testImplementation 'org.slf4j:slf4j-jdk14:1.7.30'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
+    testImplementation 'org.slf4j:slf4j-jdk14:1.7.32'
     testImplementation 'org.fusesource.leveldbjni:leveldbjni-all:1.8'
 }
 
-sourceCompatibility = 1.8
+sourceCompatibility = 8
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.18.0'
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    option "lite"
+                }
+            }
+        }
+    }
+    generatedFilesBaseDir = new File(projectDir, '/src') // workaround for '$projectDir/src'
+}
 
 test {
     exclude 'org/libdohj/net/NetworkAbstractionTests*'
@@ -43,4 +62,16 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 artifacts {
     archives sourcesJar
     archives javadocJar
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'org.libdohj'
+            artifactId = 'libdohj'
+            version = '0.16-SNAPSHOT'
+
+            from components.java
+        }
+    }
 }
