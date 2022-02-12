@@ -18,7 +18,7 @@ package org.libdohj.params;
 
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Sha256Hash;
-import org.spongycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 
 import static com.google.common.base.Preconditions.checkState;
 
